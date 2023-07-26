@@ -5,6 +5,7 @@ import "database/sql"
 type User struct {
 	Username      sql.NullString `db:"username"`
 	Password      sql.NullString `db:"password"`
+	Secret        sql.NullString `db:"secret"`
 	IsDeposit     sql.NullBool   `db:"is_deposit"`
 	NevaUsername  sql.NullString `db:"neva_username"`
 	NevaPassword  sql.NullString `db:"neva_password"`

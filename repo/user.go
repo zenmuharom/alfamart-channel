@@ -26,7 +26,7 @@ func NewUserRepo(logger zenlogger.Zenlogger) UserRepo {
 func (repo *DefaultUserRepo) Find(username string) (domain.User, error) {
 	var user domain.User
 
-	sqlStmt := `SELECT username, password, is_deposit, neva_username, neva_password, account_number, mitraco FROM user WHERE deleted_at IS NULL AND username = ? LIMIT 1`
+	sqlStmt := `SELECT username, password, secret, is_deposit, neva_username, neva_password, account_number, mitraco FROM user WHERE deleted_at IS NULL AND username = ? LIMIT 1`
 	repo.logger.Debug(sqlStmt, zenlogger.ZenField{Key: "username", Value: username})
 
 	err := util.GetDB().Get(&user, sqlStmt, username)
