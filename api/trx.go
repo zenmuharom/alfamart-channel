@@ -21,7 +21,11 @@ import (
 )
 
 func (server *DefaultServer) Trx(ctx *gin.Context) {
-	endpoint := ctx.Request.RequestURI
+
+	ctx.String(http.StatusOK, "00|Fake Success")
+	return
+
+	endpoint := ctx.Request.URL.RawPath
 	logger := server.logger
 	logger.WithPid(ctx.Request.Header.Get("pid"))
 

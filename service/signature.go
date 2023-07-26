@@ -28,12 +28,14 @@ func NewSignatureService(logger zenlogger.Zenlogger) SignatureService {
 
 func (service *DefaultSignatureService) Check(endpoint string, req map[string]interface{}) (valid bool, err error) {
 	// BYPASS FOR DEBUG
-	// return true
+	// valid = true
+	// err = nil
+	// return
 
 	hash := sha256.New()
 
 	// find userName
-	userNameKey, userNameIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, "/", "userName", req)
+	userNameKey, userNameIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "userName", req)
 	if userNameKey.Parent == "" && userNameKey.Field == "" {
 		valid = false
 		err = errors.New("username route not set yet by Finnet.")
@@ -61,64 +63,10 @@ func (service *DefaultSignatureService) Check(endpoint string, req map[string]in
 
 	service.logger.Debug("Signature Raw", zenlogger.ZenField{Key: "request", Value: req}, zenlogger.ZenField{Key: "password", Value: user.Password.String})
 
-	// find timeStamp
-	timeStampKey, timeStampIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "timeStamp", req)
-	if timeStampKey.Parent == "" && timeStampKey.Field == "" {
-		valid = false
-		err = errors.New("timestamp route not set yet by Finnet.")
-		return
-	}
-	timeStamp := fmt.Sprintf("%v", timeStampIValue)
-
-	sha256timeStampAndPassword := timeStamp + user.Password.String
+	sha256timeStampAndPassword := user.Password.String
 	hash.Write([]byte(sha256timeStampAndPassword))
 
 	sha256res := fmt.Sprintf("%x", hash.Sum(nil))
-
-	// find channel
-	channelKey, channelIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "channel", req)
-	if channelKey.Parent == "" && channelKey.Field == "" {
-		valid = false
-		err = errors.New("channel route not set yet by Finnet.")
-		return
-	}
-	channel := fmt.Sprintf("%v", channelIValue)
-
-	// find terminal
-	terminalKey, terminalIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "terminal", req)
-	if terminalKey.Parent == "" && terminalKey.Field == "" {
-		valid = false
-		err = errors.New("terminal route not set yet by Finnet.")
-		return
-	}
-	terminal := fmt.Sprintf("%v", terminalIValue)
-
-	// find transactionType
-	transactionTypeKey, transactionTypeIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "transactionType", req)
-	if transactionTypeKey.Parent == "" && transactionTypeKey.Field == "" {
-		valid = false
-		err = errors.New("transactionType route not set yet by Finnet.")
-		return
-	}
-	transactionType := fmt.Sprintf("%v", transactionTypeIValue)
-
-	// find billNumber
-	billNumberKey, billNumberIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "billNumber", req)
-	if billNumberKey.Parent == "" && billNumberKey.Field == "" {
-		valid = false
-		err = errors.New("bill number route not set yet by Finnet.")
-		return
-	}
-	billNumber := fmt.Sprintf("%v", billNumberIValue)
-
-	// find traxId
-	traxIdKey, traxIdIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "traxId", req)
-	if traxIdKey.Parent == "" && traxIdKey.Field == "" {
-		valid = false
-		err = errors.New("traxId route not set yet by Finnet.")
-		return
-	}
-	traxId := fmt.Sprintf("%v", traxIdIValue)
 
 	// find signature
 	signatureKey, signatureIValue := tool.FindFieldAs(service.logger, domain.SERVER_REQUEST, endpoint, "signature", req)
@@ -134,7 +82,7 @@ func (service *DefaultSignatureService) Check(endpoint string, req map[string]in
 		return
 	}
 
-	rawSignature := userName + productCode + channel + terminal + transactionType + billNumber + traxId + sha256res
+	rawSignature := userName + productCode + sha256res
 
 	generatedSignature := ""
 

@@ -5,6 +5,7 @@ import "database/sql"
 type ServerResponse struct {
 	Id                 int            `db:"id"`
 	Endpoint           sql.NullString `db:"endpoint"`
+	Order              int64          `db:"order"`
 	Field              sql.NullString `db:"field"`
 	Type               sql.NullString `db:"type"`
 	ParentId           sql.NullInt64  `db:"parent_id"`

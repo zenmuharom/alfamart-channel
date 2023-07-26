@@ -8,6 +8,8 @@ import (
 	"alfamart-channel/util"
 	"errors"
 	"fmt"
+	"os"
+
 	"net/http"
 	"reflect"
 	"strconv"
@@ -82,7 +84,27 @@ func (server *DefaultServer) setupRouter() {
 		resp := map[string]string{"status": "OK"}
 		ctx.JSON(http.StatusOK, resp)
 	})
-	router.POST("/", server.validate(), server.Trx)
+
+	routeRepo := repo.NewRouteRepo(server.logger)
+	routes, err := routeRepo.FindAll()
+	if err != nil {
+		server.logger.Error("there is no route config has been created", zenlogger.ZenField{Key: "error", Value: err.Error()})
+		os.Exit(0)
+	}
+
+	for _, route := range routes {
+		switch route.Method.String {
+		case "GET":
+			router.GET(route.Path.String, server.validate(), server.Trx)
+		case "POST":
+			router.POST(route.Path.String, server.validate(), server.Trx)
+		case "PUT":
+			router.PUT(route.Path.String, server.validate(), server.Trx)
+		case "DELETE":
+			router.DELETE(route.Path.String, server.validate(), server.Trx)
+		}
+		server.logger.Info("starting endpoint", zenlogger.ZenField{Key: "method", Value: route.Method.String}, zenlogger.ZenField{Key: "path", Value: route.Path.String})
+	}
 	server.router = router
 }
 
@@ -132,7 +154,7 @@ func sendErrorResponse(ctx *gin.Context, logger zenlogger.Zenlogger, endpoint, p
 	}
 
 	// find resultCode
-	keyResultCode, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.RequestURI, "resultCode", serverResponse)
+	keyResultCode, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.URL.Path, "resultCode", serverResponse)
 	if keyResultCode.Field == "" && keyResultCode.Parent == "" {
 		err := errors.New("Result code not set yet")
 		errorMsg.Err = err
@@ -162,7 +184,7 @@ func sendErrorResponse(ctx *gin.Context, logger zenlogger.Zenlogger, endpoint, p
 	}
 
 	// find resultDesc
-	keyResultDesc, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.RequestURI, "resultDesc", serverResponse)
+	keyResultDesc, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.URL.Path, "resultDesc", serverResponse)
 	if keyResultDesc.Field == "" && keyResultDesc.Parent == "" {
 		err := errors.New("Result desc not set yet")
 		errorMsg.Err = err
@@ -191,7 +213,18 @@ func sendErrorResponse(ctx *gin.Context, logger zenlogger.Zenlogger, endpoint, p
 		}
 	}
 
-	ctx.AbortWithStatusJSON(httpStatus, serverResponse)
+	arrangerService := service.NewArrangerService(logger)
+	arrangedResponse, err := arrangerService.Arrange(productCode, endpoint, serverResponse)
+	if err != nil {
+		errorMsg.Err = err
+		logger.Error(err.Error())
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, errorMsg)
+	}
+
+	serverResponseText := writeToText(arrangedResponse)
+
+	ctx.String(httpStatus, serverResponseText)
+	ctx.Abort()
 	return
 
 }
@@ -230,7 +263,7 @@ func sendErrorResponseFinish(ctx *gin.Context, logger zenlogger.Zenlogger, endpo
 	}
 
 	// find resultCode
-	keyResultCode, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.RequestURI, "resultCode", serverResponse)
+	keyResultCode, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.URL.Path, "resultCode", serverResponse)
 	if keyResultCode.Field == "" && keyResultCode.Parent == "" {
 		err := errors.New("Result code not set yet")
 		errorMsg.Err = err
@@ -260,7 +293,7 @@ func sendErrorResponseFinish(ctx *gin.Context, logger zenlogger.Zenlogger, endpo
 	}
 
 	// find resultDesc
-	keyResultDesc, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.RequestURI, "resultDesc", serverResponse)
+	keyResultDesc, _ := tool.FindFieldAs(logger, domain.SERVER_RESPONSE, ctx.Request.URL.Path, "resultDesc", serverResponse)
 	if keyResultDesc.Field == "" && keyResultDesc.Parent == "" {
 		err := errors.New("Result desc not set yet")
 		errorMsg.Err = err
@@ -289,7 +322,34 @@ func sendErrorResponseFinish(ctx *gin.Context, logger zenlogger.Zenlogger, endpo
 		}
 	}
 
-	ctx.AbortWithStatusJSON(httpStatus, serverResponse)
+	arrangerService := service.NewArrangerService(logger)
+	arrangedResponse, err := arrangerService.Arrange(productCode, endpoint, serverResponse)
+	if err != nil {
+		errorMsg.Err = err
+		logger.Error(err.Error())
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, errorMsg)
+	}
+
+	serverResponseText := writeToText(arrangedResponse)
+	ctx.String(httpStatus, serverResponseText)
+	ctx.Abort()
 	return
 
+}
+
+func writeToText(json []interface{}) (responseText string) {
+
+	index := 0
+	for _, value := range json {
+		if value == nil {
+			value = ""
+		}
+		responseText += fmt.Sprintf("%v", value)
+		if index < len(json) {
+			responseText += "|"
+		}
+		index++
+	}
+
+	return
 }

@@ -42,7 +42,7 @@ func NewAssigner2(logger zenlogger.Zenlogger) Assigner2 {
 
 func (assigner *DefaultAssigner2) ServerResponseConstruct(srConfs []domain.ServerResponse, values map[string]interface{}) (constructed map[string]interface{}, errs []error) {
 	constructed = make(map[string]interface{}, 0)
-	assigner.logger.Debug("ServerResponseConstruct", zenlogger.ZenField{Key: "values", Value: values})
+	assigner.logger.Debug("ServerResponseConstruct", zenlogger.ZenField{Key: "srConfs", Value: srConfs}, zenlogger.ZenField{Key: "values", Value: values})
 	for key, config := range srConfs {
 		assigner.logger.Debug("ServerResponseConstruct", zenlogger.ZenField{Key: "key", Value: key}, zenlogger.ZenField{Key: "config", Value: config}, zenlogger.ZenField{Key: "ParentId", Value: config.ParentId.Int64})
 
@@ -138,7 +138,7 @@ func (assigner *DefaultAssigner2) ServerResponseConstruct(srConfs []domain.Serve
 			}
 		}
 
-		assigner.logger.Debug("ServerResponseConstruct", zenlogger.ZenField{Key: "constructed", Value: values})
+		assigner.logger.Debug("ServerResponseConstruct", zenlogger.ZenField{Key: "constructed", Value: constructed})
 
 	}
 
@@ -148,6 +148,11 @@ func (assigner *DefaultAssigner2) ServerResponseConstruct(srConfs []domain.Serve
 func (assigner *DefaultAssigner2) ServerResponseParse(srvConfs []domain.ServerResponseValue, middlewareResponseValue map[string]interface{}) (parsed map[string]interface{}, errs []error) {
 	assigner.logger.Debug("ServerResponseParse", zenlogger.ZenField{Key: "srvConfs", Value: srvConfs}, zenlogger.ZenField{Key: "middlewareResponseValue", Value: middlewareResponseValue})
 	fparse := make(map[string]interface{}, 0)
+
+	if len(srvConfs) == 0 {
+		return
+	}
+
 	for _, conf := range srvConfs {
 		var err error
 

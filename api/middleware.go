@@ -5,11 +5,8 @@ import (
 	"alfamart-channel/repo"
 	"alfamart-channel/service"
 	"alfamart-channel/tool"
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zenmuharom/zenlogger"
@@ -20,29 +17,38 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		logger := server.setupLogger()
 
-		// read and unmarshal request body to map
-		reqBody, _ := ioutil.ReadAll(ctx.Request.Body)
-		var req map[string]interface{}
-		if err := json.Unmarshal(reqBody, &req); err != nil {
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, "", ErrorMsg{GoCode: 7026})
-			return
+		// read parameter URI
+		// Get the map of query parameters from the URL
+		req := make(map[string]interface{})
+		queryParams := ctx.Request.URL.Query()
+		// Iterate through the map and print the key-value pairs
+		for key, values := range queryParams {
+			// If there is only one value, add it directly to the map
+			if len(values) == 1 {
+				req[key] = values[0]
+			} else {
+				// If there are multiple values, add them as a slice of strings
+				req[key] = values
+			}
 		}
+		logger.Debug("validate", zenlogger.ZenField{Key: "queryParams", Value: queryParams}, zenlogger.ZenField{Key: "req", Value: req})
 
 		// find productCode
-		_, productCodeIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, ctx.Request.RequestURI, "productCode", req)
+		_, productCodeIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, ctx.Request.URL.Path, "productCode", req)
 		if productCodeIValue == nil {
 			err := errors.New("Product code route not set yet")
 			logger.Error(err.Error())
 			errorMsg := ErrorMsg{GoCode: 1706, Err: err}
-			logger.Debug("sendErrorResponse", zenlogger.ZenField{Key: "requestURI", Value: ctx.Request.RequestURI})
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, "", errorMsg)
+			logger.Debug("sendErrorResponse", zenlogger.ZenField{Key: "requestURI", Value: ctx.Request.URL.Path})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, "", errorMsg)
 			return
 		}
 		productCode := fmt.Sprintf("%v", productCodeIValue)
+		logger.Debug("validate", zenlogger.ZenField{Key: "productCode", Value: productCode})
 
 		// validate request body using configuration DB
-		if valid, errRes := validateRequest(logger, ctx.Request.RequestURI, req); !valid {
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, ctx.Request.RequestURI, errRes)
+		if valid, errRes := validateRequest(logger, ctx.Request.URL.Path, req); !valid {
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, ctx.Request.URL.Path, errRes)
 			return
 		}
 
@@ -51,35 +57,37 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 		valid, err := ipConfigRepo.FindIp(ctx.ClientIP())
 		if err != nil {
 			logger.Error(err.Error())
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, productCode, ErrorMsg{GoCode: 1706, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 1706, Err: err})
 			return
 		}
 
 		if !valid {
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, productCode, ErrorMsg{GoCode: 1994, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 1994, Err: err})
 			return
 		}
 
 		signatureService := service.NewSignatureService(logger)
-		valid, err = signatureService.Check(ctx.Request.RequestURI, req)
+		valid, err = signatureService.Check(ctx.Request.URL.Path, req)
 		if err != nil {
 			logger.Error(err.Error())
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, productCode, ErrorMsg{GoCode: 1706, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 1706, Err: err})
+			return
 		}
 		if !valid {
 			logger.Info("Invalid signature")
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, productCode, ErrorMsg{GoCode: 36, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 36, Err: err})
 			return
 		}
 
-		newBody, err := json.Marshal(req)
-		if err != nil {
-			logger.Error("Fail to re-wrap request", zenlogger.ZenField{Key: "error", Value: err})
-			sendErrorResponse(ctx, logger, ctx.Request.RequestURI, productCode, ErrorMsg{GoCode: 7000, Err: err})
-		}
-		ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
+		// newBody, err := json.Marshal(req)
+		// if err != nil {
+		// 	logger.Error("Fail to re-wrap request", zenlogger.ZenField{Key: "error", Value: err})
+		// 	sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 7000, Err: err})
+		// 	return
+		// }
+		// ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
 
-		ctx.Next()
+		// ctx.Next()
 	}
 }
 
@@ -164,7 +172,6 @@ func validateRequest(logger zenlogger.Zenlogger, endpoint string, req map[string
 		}
 
 		if !valid2 {
-			validationMsg += fmt.Sprintf("%s is not needed", reqField)
 			validationMsg += fmt.Sprintf("%s tidak dibutuhkan", reqField)
 		}
 

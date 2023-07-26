@@ -94,15 +94,7 @@ func (service *DefaultAssignService) AssignServerResponse(productCode, endpoint 
 	// find all server response
 	serverResponseRepo := repo.NewServerResponseRepo(service.logger)
 	// if productCode is not empty select it base on productCode otherwise select the default one
-	if productCode != "" {
-		serverResponseConfs, err = serverResponseRepo.FindAllByProductCodeAndEndpoint(productCode, endpoint)
-		// if config is zero select config from default
-		if len(serverResponseConfs) == 0 {
-			serverResponseConfs, err = serverResponseRepo.FindAllByProductCodeAndEndpoint(productCode, endpoint)
-		}
-	} else {
-		serverResponseConfs, err = serverResponseRepo.FindAllByProductCodeAndEndpoint(productCode, endpoint)
-	}
+	serverResponseConfs, err = serverResponseRepo.FindAllByProductCodeAndEndpoint(productCode, endpoint)
 	service.logger.Debug("serverResponseConfs", zenlogger.ZenField{Key: "data", Value: serverResponseConfs})
 	if err != nil {
 		service.logger.Error(err.Error())
@@ -169,7 +161,7 @@ func (service *DefaultAssignService) AssignServerResponse(productCode, endpoint 
 
 	resultDescKey, _ := tool.FindFieldAs(service.logger, domain.SERVER_RESPONSE, endpoint, "resultDesc", serverResponse)
 	if resultDescKey.Parent == "" {
-		serverResponse[resultDescKey.Field] = rcConfig.DescEng.String
+		serverResponse[resultDescKey.Field] = rcConfig.DescId.String
 	} else {
 		// if it has parent key
 		parentRCObject := serverResponse[resultDescKey.Parent]
@@ -180,7 +172,7 @@ func (service *DefaultAssignService) AssignServerResponse(productCode, endpoint 
 			iter := valueOfVariableParentRC.MapRange()
 			for iter.Next() {
 				if iter.Key().String() == resultDescKey.Field {
-					newParentResultDescObject[iter.Key().String()] = rcConfig.DescEng.String
+					newParentResultDescObject[iter.Key().String()] = rcConfig.DescId.String
 				} else {
 					newParentResultDescObject[iter.Key().String()] = iter.Value().Interface()
 				}

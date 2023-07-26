@@ -13,6 +13,7 @@ type DefaultServerResponseRepo struct {
 
 type ServerResponseRepo interface {
 	FindAllByProductCodeAndEndpoint(productCode, endpoint string) ([]domain.ServerResponse, error)
+	FindAllByProductCodeAndEndpointParentOnly(productCode, endpoint string) ([]domain.ServerResponse, error)
 	FindByEndpointAndFieldAs(endpoint, fieldAs string) (*domain.ServerResponse, error)
 }
 
@@ -25,7 +26,22 @@ func NewServerResponseRepo(logger zenlogger.Zenlogger) ServerResponseRepo {
 func (repo *DefaultServerResponseRepo) FindAllByProductCodeAndEndpoint(productCode, endpoint string) ([]domain.ServerResponse, error) {
 	middlewareResponseValueConfs := make([]domain.ServerResponse, 0)
 
-	sqlStmt := `SELECT sr.id, sr.field, sr.type, sr.parent_id, sr.product_code, srp.field AS field_parent, srp.type AS field_parent_type, sr.condition_field_id AS condition_field_id, srp2.field AS condition_field_name, sr.condition_operator AS condition_operator, sr.condition_value AS condition_value FROM ( SELECT *, ROW_NUMBER() OVER ( PARTITION BY endpoint, field, parent_id, product_code, condition_field_id, condition_operator, condition_value ORDER BY CASE WHEN product_code <> 000000 THEN 0 ELSE 1 END, product_code DESC, id ) AS rn FROM server_response WHERE deleted_at IS NULL AND ( product_code = '000000' OR product_code = ? ) ) sr LEFT JOIN server_response srp ON srp.id = sr.parent_id LEFT JOIN server_response srp2 ON srp2.id = sr.condition_field_id WHERE sr.rn = 1 AND sr.deleted_at IS NULL AND sr.endpoint = ? ORDER BY sr.parent_id DESC, sr.id DESC, srp.id DESC`
+	sqlStmt := `SELECT sr.id, sr.order AS 'order', sr.field, sr.type, sr.parent_id, sr.product_code, srp.field AS field_parent, srp.type AS field_parent_type, sr.condition_field_id AS condition_field_id, srp2.field AS condition_field_name, sr.condition_operator AS condition_operator, sr.condition_value AS condition_value FROM ( SELECT *, ROW_NUMBER ( ) OVER ( PARTITION BY endpoint, field, parent_id, product_code, condition_field_id, condition_operator, condition_value ORDER BY CASE WHEN product_code <> 000000 THEN 0 ELSE 1 END, product_code DESC, id ) AS rn FROM server_response WHERE deleted_at IS NULL AND ( product_code = '000000' OR product_code = ? ) ) sr LEFT JOIN server_response srp ON srp.id = sr.parent_id LEFT JOIN server_response srp2 ON srp2.id = sr.condition_field_id WHERE sr.rn = 1 AND sr.deleted_at IS NULL AND sr.endpoint = ? ORDER BY sr.order ASC, sr.parent_id DESC, sr.id DESC, srp.id DESC`
+	repo.logger.Debug(sqlStmt, zenlogger.ZenField{Key: "product_code", Value: productCode}, zenlogger.ZenField{Key: "endpoint", Value: endpoint})
+
+	err := util.GetDB().Select(&middlewareResponseValueConfs, sqlStmt, productCode, endpoint)
+	if err != nil {
+		repo.logger.Error(err.Error())
+		return nil, err
+	}
+
+	return middlewareResponseValueConfs, nil
+}
+
+func (repo *DefaultServerResponseRepo) FindAllByProductCodeAndEndpointParentOnly(productCode, endpoint string) ([]domain.ServerResponse, error) {
+	middlewareResponseValueConfs := make([]domain.ServerResponse, 0)
+
+	sqlStmt := `SELECT sr.id, sr.ORDER AS 'order', sr.field, sr.type, sr.parent_id, sr.product_code, srp.field AS field_parent, srp.type AS field_parent_type, sr.condition_field_id AS condition_field_id, srp2.field AS condition_field_name, sr.condition_operator AS condition_operator, sr.condition_value AS condition_value FROM ( SELECT *, ROW_NUMBER ( ) OVER ( PARTITION BY endpoint, field, parent_id, product_code, condition_field_id, condition_operator, condition_value ORDER BY CASE WHEN product_code <> 000000 THEN 0 ELSE 1 END, product_code DESC, id ) AS rn FROM server_response WHERE deleted_at IS NULL AND ( product_code = '000000' OR product_code = ? ) ) sr LEFT JOIN server_response srp ON srp.id = sr.parent_id LEFT JOIN server_response srp2 ON srp2.id = sr.condition_field_id WHERE sr.rn = 1 AND sr.deleted_at IS NULL AND sr.endpoint = ? AND sr.parent_id IS NULL ORDER BY sr.ORDER ASC, sr.parent_id DESC, sr.id DESC, srp.id DESC`
 	repo.logger.Debug(sqlStmt, zenlogger.ZenField{Key: "product_code", Value: productCode}, zenlogger.ZenField{Key: "endpoint", Value: endpoint})
 
 	err := util.GetDB().Select(&middlewareResponseValueConfs, sqlStmt, productCode, endpoint)
