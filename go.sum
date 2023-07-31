@@ -229,6 +229,8 @@ github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/zenmuharom/zenfunction v1.0.7 h1:0Dkc+uPC7J3w2MaBbRz4hYsYt7FErdqvnS3mSQ4ecgY=
 github.com/zenmuharom/zenfunction v1.0.7/go.mod h1:oEw9cVkfLCQChCDtXg196hxtL9djb1jpABEUv2uMwgc=
+github.com/zenmuharom/zenfunction v1.0.8 h1:VaQyFBWdpF/zE4RBEvEDb3Rezkm79TpDA5matUzw1es=
+github.com/zenmuharom/zenfunction v1.0.8/go.mod h1:oEw9cVkfLCQChCDtXg196hxtL9djb1jpABEUv2uMwgc=
 github.com/zenmuharom/zenlogger v1.1.4 h1:V9zhaqKMX7unn6QhhxFsZsCJ59FMH+eCIXJrcMv4LuE=
 github.com/zenmuharom/zenlogger v1.1.4/go.mod h1:yd6sULfc9aZhSpVuaxFRs9gx147d+sDxGtqWw3GPinc=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=

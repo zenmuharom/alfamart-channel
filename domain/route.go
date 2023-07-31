@@ -6,6 +6,7 @@ type Route struct {
 	Id          int64          `db:"id"`
 	Method      sql.NullString `db:"method"`
 	Path        sql.NullString `db:"path"`
+	Handler     sql.NullString `db:"handler"`
 	CreatedAt   sql.NullTime   `db:"created_at"`
 	UpdatedAt   sql.NullTime   `db:"updated_at"`
 	ActivatedAt sql.NullTime   `db:"activated_at"`

@@ -20,15 +20,22 @@ type DefaultAssignService struct {
 
 type AssignService interface {
 	AssignServerResponse(productCode, endpoint string, middlewResponseIDs []int, middlwareResponse map[string]interface{}) (serverResponse map[string]interface{}, err error)
-	AssignMiddlewareRequest(middleware, process, productCode string, serverRequest map[string]interface{}) (middlewareRequest map[string]interface{}, err error)
+	AssignMiddlewareRequest(middleware string, process string, userProductConf *domain.UserProduct, serverRequest map[string]interface{}) (middlewareRequest map[string]interface{}, err error)
 }
 
 func NewAssignService(logger zenlogger.Zenlogger) AssignService {
 	return &DefaultAssignService{logger: logger}
 }
 
-func (service *DefaultAssignService) AssignMiddlewareRequest(middleware, process, productCode string, serverRequest map[string]interface{}) (middlewareRequest map[string]interface{}, err error) {
-	service.logger.Debug("AssignMiddlewareRequest", zenlogger.ZenField{Key: "middleware", Value: middleware}, zenlogger.ZenField{Key: "serverRequest", Value: serverRequest})
+func (service *DefaultAssignService) AssignMiddlewareRequest(middleware string, process string, userProductConf *domain.UserProduct, serverRequest map[string]interface{}) (middlewareRequest map[string]interface{}, err error) {
+	service.logger.Debug("AssignMiddlewareRequest", zenlogger.ZenField{Key: "middleware", Value: middleware}, zenlogger.ZenField{Key: "process", Value: process}, zenlogger.ZenField{Key: "serverRequest", Value: serverRequest})
+
+	// set productCode
+	productCode := userProductConf.ProductCode.String
+	// override if product code mapped not empty
+	if userProductConf.ProductCodeMapped.String != "" {
+		productCode = userProductConf.ProductCodeMapped.String
+	}
 
 	// Find all middleware request
 	middlewareRequestRepo := repo.NewMiddlewareRequestRepo(service.logger)
@@ -81,6 +88,99 @@ func (service *DefaultAssignService) AssignMiddlewareRequest(middleware, process
 		service.logger.Debug("AssignMiddlewareRequest", zenlogger.ZenField{Key: "middlewareRequest", Value: middlewareRequest})
 	}
 
+	// find bit18
+	bit18Key, bit18IValue := tool.FindFieldAs(service.logger, domain.MIDDLEWARE_REQUEST, fmt.Sprintf("ts_adapter|%v", process), "bit18", middlewareRequest)
+	if bit18Key.Parent == "" && bit18Key.Field == "" {
+		err = errors.New("bit18 route not set yet.")
+		service.logger.Debug(err.Error())
+		return
+	}
+
+	// assign bit18 based on Config @ user_product
+	if bit18IValue == nil || bit18IValue == "" {
+		if bit18Key.Parent == "" {
+			middlewareRequest[bit18Key.Field] = userProductConf.Bit18.String
+		} else {
+			// if it has parent key
+			parentRCObject := middlewareRequest[bit18Key.Parent]
+			valueOfVariableParentRC := reflect.ValueOf(parentRCObject)
+			newParentRCObject := make(map[string]interface{})
+			switch valueOfVariableParentRC.Kind() {
+			case reflect.Map:
+				iter := valueOfVariableParentRC.MapRange()
+				for iter.Next() {
+					if iter.Key().String() == bit18Key.Field {
+						newParentRCObject[iter.Key().String()] = userProductConf.Bit18.String
+					} else {
+						newParentRCObject[iter.Key().String()] = iter.Value().Interface()
+					}
+				}
+			}
+		}
+	}
+
+	// find bit32
+	bit32Key, bit32IValue := tool.FindFieldAs(service.logger, domain.MIDDLEWARE_REQUEST, fmt.Sprintf("ts_adapter|%v", process), "bit32", middlewareRequest)
+	if bit32Key.Parent == "" && bit32Key.Field == "" {
+		err = errors.New("bit32 route not set yet.")
+		service.logger.Debug(err.Error())
+		return
+	}
+
+	// assign bit32 based on Config @ user_product
+	if bit32IValue == nil || bit32IValue == "" {
+		if bit32Key.Parent == "" {
+			middlewareRequest[bit32Key.Field] = userProductConf.Bit32.String
+		} else {
+			// if it has parent key
+			parentRCObject := middlewareRequest[bit32Key.Parent]
+			valueOfVariableParentRC := reflect.ValueOf(parentRCObject)
+			newParentRCObject := make(map[string]interface{})
+			switch valueOfVariableParentRC.Kind() {
+			case reflect.Map:
+				iter := valueOfVariableParentRC.MapRange()
+				for iter.Next() {
+					if iter.Key().String() == bit32Key.Field {
+						newParentRCObject[iter.Key().String()] = userProductConf.Bit32.String
+					} else {
+						newParentRCObject[iter.Key().String()] = iter.Value().Interface()
+					}
+				}
+			}
+		}
+	}
+
+	// find bit33
+	bit33Key, bit33IValue := tool.FindFieldAs(service.logger, domain.MIDDLEWARE_REQUEST, fmt.Sprintf("ts_adapter|%v", process), "bit33", middlewareRequest)
+	if bit33Key.Parent == "" && bit33Key.Field == "" {
+		err = errors.New("bit33 route not set yet.")
+		service.logger.Debug(err.Error())
+		return
+	}
+
+	// assign bit33 based on Config @ user_product
+	if bit33IValue == nil || bit33IValue == "" {
+		if bit33Key.Parent == "" {
+			middlewareRequest[bit33Key.Field] = userProductConf.Bit33.String
+		} else {
+			// if it has parent key
+			parentRCObject := middlewareRequest[bit33Key.Parent]
+			valueOfVariableParentRC := reflect.ValueOf(parentRCObject)
+			newParentRCObject := make(map[string]interface{})
+			switch valueOfVariableParentRC.Kind() {
+			case reflect.Map:
+				iter := valueOfVariableParentRC.MapRange()
+				for iter.Next() {
+					if iter.Key().String() == bit33Key.Field {
+						newParentRCObject[iter.Key().String()] = userProductConf.Bit33.String
+					} else {
+						newParentRCObject[iter.Key().String()] = iter.Value().Interface()
+					}
+				}
+			}
+		}
+	}
+
 	service.logger.Debug("AssignMiddlewareRequest", zenlogger.ZenField{Key: "middlewareRequest", Value: middlewareRequest}, zenlogger.ZenField{Key: "requestValues", Value: requestValues})
 
 	return
@@ -98,6 +198,12 @@ func (service *DefaultAssignService) AssignServerResponse(productCode, endpoint 
 	service.logger.Debug("serverResponseConfs", zenlogger.ZenField{Key: "data", Value: serverResponseConfs})
 	if err != nil {
 		service.logger.Error(err.Error())
+		return
+	}
+
+	if len(serverResponseConfs) == 0 {
+		err = errors.New("There is no server response config found")
+		service.logger.Info("AssignServerResponse", zenlogger.ZenField{Key: "error", Value: err.Error()})
 		return
 	}
 

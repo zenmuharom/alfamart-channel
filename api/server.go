@@ -85,6 +85,10 @@ func (server *DefaultServer) setupRouter() {
 		ctx.JSON(http.StatusOK, resp)
 	})
 
+	handlers := map[string]gin.HandlerFunc{
+		"inquiry": server.Inquiry,
+	}
+
 	routeRepo := repo.NewRouteRepo(server.logger)
 	routes, err := routeRepo.FindAll()
 	if err != nil {
@@ -95,13 +99,13 @@ func (server *DefaultServer) setupRouter() {
 	for _, route := range routes {
 		switch route.Method.String {
 		case "GET":
-			router.GET(route.Path.String, server.validate(), server.Trx)
+			router.GET(route.Path.String, server.validate(), handlers[route.Handler.String])
 		case "POST":
-			router.POST(route.Path.String, server.validate(), server.Trx)
+			router.POST(route.Path.String, server.validate(), handlers[route.Handler.String])
 		case "PUT":
-			router.PUT(route.Path.String, server.validate(), server.Trx)
+			router.PUT(route.Path.String, server.validate(), handlers[route.Handler.String])
 		case "DELETE":
-			router.DELETE(route.Path.String, server.validate(), server.Trx)
+			router.DELETE(route.Path.String, server.validate(), handlers[route.Handler.String])
 		}
 		server.logger.Info("starting endpoint", zenlogger.ZenField{Key: "method", Value: route.Method.String}, zenlogger.ZenField{Key: "path", Value: route.Path.String})
 	}
@@ -130,6 +134,8 @@ func sendErrorResponse(ctx *gin.Context, logger zenlogger.Zenlogger, endpoint, p
 	serverResponse, err := assignServResponseService.AssignServerResponse("", endpoint, []int{}, map[string]interface{}{})
 	if err != nil {
 		logger.Error(err.Error())
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	// find RC Code

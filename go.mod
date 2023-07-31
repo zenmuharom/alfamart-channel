@@ -8,7 +8,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.3
-	github.com/zenmuharom/zenfunction v1.0.7
+	github.com/zenmuharom/zenfunction v1.0.8
 	github.com/zenmuharom/zenlogger v1.1.4
 	golang.org/x/net v0.10.0
 )

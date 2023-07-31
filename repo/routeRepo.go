@@ -23,7 +23,7 @@ func NewRouteRepo(logger zenlogger.Zenlogger) RouteRepo {
 
 func (repo *DefaultRouteRepo) FindAll() (routes []domain.Route, err error) {
 	datas := make([]domain.Route, 0)
-	sqlStmt := `SELECT id, method, path, created_at, updated_at, deleted_at FROM route WHERE deleted_at IS NULL`
+	sqlStmt := `SELECT id, method, path, handler, created_at, updated_at, deleted_at FROM route WHERE deleted_at IS NULL`
 	repo.logger.Debug(sqlStmt)
 
 	err = util.GetDB().Select(&datas, sqlStmt)

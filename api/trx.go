@@ -21,10 +21,6 @@ import (
 )
 
 func (server *DefaultServer) Trx(ctx *gin.Context) {
-
-	ctx.String(http.StatusOK, "00|Fake Success")
-	return
-
 	endpoint := ctx.Request.URL.RawPath
 	logger := server.logger
 	logger.WithPid(ctx.Request.Header.Get("pid"))
@@ -275,7 +271,7 @@ func (server *DefaultServer) Trx(ctx *gin.Context) {
 	}
 
 	// assign server Request to TS request
-	tsReq, err := assignService.AssignMiddlewareRequest("ts_adapter", process, productCode, req)
+	tsReq, err := assignService.AssignMiddlewareRequest("ts_adapter", process, &userProductConf, req)
 	if err != nil {
 		logger.Error(err.Error())
 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 7000, Err: err})
