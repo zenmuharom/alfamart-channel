@@ -9,22 +9,37 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/zenmuharom/zenlogger"
 )
 
 type DefaultAssignService struct {
-	logger zenlogger.Zenlogger
+	logger       zenlogger.Zenlogger
+	servRespConf []domain.ServerResponse
 }
 
 type AssignService interface {
 	AssignServerResponse(productCode, endpoint string, middlewResponseIDs []int, middlwareResponse map[string]interface{}) (serverResponse map[string]interface{}, err error)
 	AssignMiddlewareRequest(middleware string, process string, userProductConf *domain.UserProduct, serverRequest map[string]interface{}) (middlewareRequest map[string]interface{}, err error)
+	OrderingServerResponse(unorderedServerResponse map[string]interface{}) (orderedServerResponse string, err error)
 }
 
-func NewAssignService(logger zenlogger.Zenlogger) AssignService {
-	return &DefaultAssignService{logger: logger}
+func NewAssignService(logger zenlogger.Zenlogger, endpoint, productCode string) AssignService {
+
+	serverResponseRepo := repo.NewServerResponseRepo(logger)
+	serverResponseConfs, err := serverResponseRepo.FindAllByProductCodeAndEndpoint(productCode, endpoint)
+	if err != nil {
+		logger.Error("NewAssignService", zenlogger.ZenField{Key: "error", Value: err.Error()})
+		return &DefaultAssignService{}
+	}
+
+	return &DefaultAssignService{
+		logger:       logger,
+		servRespConf: serverResponseConfs,
+	}
 }
 
 func (service *DefaultAssignService) AssignMiddlewareRequest(middleware string, process string, userProductConf *domain.UserProduct, serverRequest map[string]interface{}) (middlewareRequest map[string]interface{}, err error) {
@@ -286,6 +301,25 @@ func (service *DefaultAssignService) AssignServerResponse(productCode, endpoint 
 		}
 		serverResponse[resultDescKey.Parent] = newParentResultDescObject
 	}
+
+	return
+}
+
+func (service *DefaultAssignService) OrderingServerResponse(unorderedServerResponse map[string]interface{}) (orderedServerResponse string, err error) {
+
+	service.logger.Debug("OrderingServerResponse", zenlogger.ZenField{Key: "unorderedServerResponse", Value: unorderedServerResponse})
+
+	var serverResponseConstruct = make([]string, 0)
+
+	sort.Slice(service.servRespConf, func(i, j int) bool {
+		return service.servRespConf[i].Order < service.servRespConf[j].Order
+	})
+
+	for _, srvResp := range service.servRespConf {
+		serverResponseConstruct = append(serverResponseConstruct, fmt.Sprintf("%v", unorderedServerResponse[srvResp.Field.String]))
+	}
+
+	orderedServerResponse = strings.Join(serverResponseConstruct, "|")
 
 	return
 }

@@ -130,7 +130,7 @@ func sendErrorResponse(ctx *gin.Context, logger zenlogger.Zenlogger, endpoint, p
 	httpStatus := http.StatusInternalServerError
 	resultCode := fmt.Sprintf("%v", errorMsg.GoCode)
 
-	assignServResponseService := service.NewAssignService(logger)
+	assignServResponseService := service.NewAssignService(logger, productCode, endpoint)
 	serverResponse, err := assignServResponseService.AssignServerResponse("", endpoint, []int{}, map[string]interface{}{})
 	if err != nil {
 		logger.Error(err.Error())
@@ -241,7 +241,7 @@ func sendErrorResponseFinish(ctx *gin.Context, logger zenlogger.Zenlogger, endpo
 	httpStatus := http.StatusInternalServerError
 	resultCode := fmt.Sprintf("%v", errorMsg.GoCode)
 
-	assignServResponseService := service.NewAssignService(logger)
+	assignServResponseService := service.NewAssignService(logger, endpoint, productCode)
 	serverResponse, err := assignServResponseService.AssignServerResponse("", endpoint, middlewResponseIDs, response)
 	if err != nil {
 		logger.Error(err.Error())

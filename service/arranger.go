@@ -23,7 +23,7 @@ func (service *DefaultArranger) Arrange(productCode string, endpoint string, toA
 	arranged = make([]interface{}, 0)
 
 	serverResponseRepo := repo.NewServerResponseRepo(service.logger)
-	srConfs, err := serverResponseRepo.FindAllByProductCodeAndEndpointParentOnly(productCode, endpoint)
+	srConfs, err := serverResponseRepo.FindAllByProductCodeAndEndpointParentOnly(endpoint, productCode)
 	if err != nil {
 		service.logger.Error("Arrange", zenlogger.ZenField{Key: "error", Value: err.Error()})
 		return

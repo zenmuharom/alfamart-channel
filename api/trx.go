@@ -199,7 +199,7 @@ func (server *DefaultServer) Trx(ctx *gin.Context) {
 	}
 
 	// ======================== BEGIN process to TS Adapter
-	assignService := service.NewAssignService(logger)
+	assignService := service.NewAssignService(logger, endpoint, productCode)
 	coreService := service.NewCoreService(logger)
 
 	process := ""
@@ -320,7 +320,7 @@ func (server *DefaultServer) Trx(ctx *gin.Context) {
 	if (rcIValue != nil || rcIValue != "") && tool.CheckRCStatus(logger, rc, userProductConf.RCSuccess) {
 
 		// assign value
-		assignService := service.NewAssignService(logger)
+		assignService := service.NewAssignService(logger, endpoint, productCode)
 		serverResponse, err := assignService.AssignServerResponse(productCode, ctx.Request.RequestURI, middlewResponseIDs, coreResponse)
 		if err != nil {
 			logger.Error(err.Error())
