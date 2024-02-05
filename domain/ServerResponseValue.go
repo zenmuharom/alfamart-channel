@@ -17,6 +17,7 @@ type ServerResponseValue struct {
 	ConditionOperator       sql.NullString `db:"condition_operator"`
 	ConditionValue          sql.NullString `db:"condition_value"`
 	ProductCode             sql.NullString `db:"product_code"`
+	FieldAs                 sql.NullString `db:"field_as"`
 	CreatedAt               sql.NullTime   `db:"created_at"`
 	UpdatedAt               sql.NullTime   `db:"updated_at"`
 	ActivatedAt             sql.NullTime   `db:"activated_at"`

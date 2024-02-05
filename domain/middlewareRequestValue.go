@@ -7,6 +7,7 @@ type MiddlewareRequestValue struct {
 	FieldId                  sql.NullInt64  `db:"field_id"`
 	FieldName                sql.NullString `db:"field_name"`
 	FieldType                sql.NullString `db:"field_type"`
+	FieldAs                  sql.NullString `db:"field_as"`
 	ServerRequestId          sql.NullInt64  `db:"server_request_id"`
 	ServerRequestField       sql.NullString `db:"server_request_field"`
 	ServerRequestParentField sql.NullString `db:"server_request_parent_field"`

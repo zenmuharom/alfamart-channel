@@ -3,7 +3,7 @@ package domain
 import "database/sql"
 
 type ServerRequest struct {
-	Id           int64          `db:"id"`
+	Id           int            `db:"id"`
 	Endpoint     sql.NullString `db:"endpoint"`
 	Order        sql.NullInt64  `db:"order"`
 	Field        sql.NullString `db:"field"`

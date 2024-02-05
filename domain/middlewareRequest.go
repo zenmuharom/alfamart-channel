@@ -15,6 +15,7 @@ type MiddlewareRequest struct {
 	ConditionValue     sql.NullString `db:"condition_value"`
 	Middleware         sql.NullString `db:"middleware"`
 	ProductCode        sql.NullString `db:"product_code"`
+	FieldAs            sql.NullString `db:"field_as"`
 	CreatedAt          sql.NullTime   `db:"created_at"`
 	UpdatedAt          sql.NullTime   `db:"updated_at"`
 	ActivatedAt        sql.NullTime   `db:"activated_at"`

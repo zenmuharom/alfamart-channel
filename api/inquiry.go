@@ -1,204 +1,188 @@
 package api
 
-import (
-	"alfamart-channel/domain"
-	"alfamart-channel/repo"
-	"alfamart-channel/service"
-	"alfamart-channel/tool"
-	"database/sql"
-	"errors"
-	"fmt"
-	"net"
-	"net/http"
-	"reflect"
+// func (server *DefaultServer) Inquiry(ctx *gin.Context) {
+// 	// endpoint := ctx.Request.URL.Path
+// 	endpoint := ctx.Request.URL.Path
+// 	logger := server.logger
+// 	logger.WithPid(ctx.Request.Header.Get("pid"))
+// 	process := "inquiry"
+// 	logger.Info(process, zenlogger.ZenField{Key: "endpoint", Value: endpoint}, zenlogger.ZenField{Key: "queryParams", Value: ctx.Request.URL.Query()})
 
-	"github.com/gin-gonic/gin"
-	"github.com/zenmuharom/zenlogger"
-)
+// 	// read parameter URI
+// 	// Get the map of query parameters from the URL
+// 	req := make(map[string]interface{})
+// 	queryParams := ctx.Request.URL.Query()
+// 	// Iterate through the map and print the key-value pairs
+// 	for key, values := range queryParams {
+// 		// If there is only one value, add it directly to the map
+// 		if len(values) == 1 {
+// 			req[key] = values[0]
+// 		} else {
+// 			// If there are multiple values, add them as a slice of strings
+// 			req[key] = values
+// 		}
+// 	}
 
-func (server *DefaultServer) Inquiry(ctx *gin.Context) {
-	// endpoint := ctx.Request.URL.Path
-	endpoint := ctx.Request.URL.Path
-	logger := server.logger
-	logger.WithPid(ctx.Request.Header.Get("pid"))
-	process := "inquiry"
-	logger.Info(process, zenlogger.ZenField{Key: "endpoint", Value: endpoint}, zenlogger.ZenField{Key: "queryParams", Value: ctx.Request.URL.Query()})
+// 	// get productCode
+// 	productCodeKey, productCodeIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "productCode", req)
+// 	if productCodeKey.Parent == "" && productCodeKey.Field == "" {
+// 		err := errors.New("product code route not set yet by Finnet.")
+// 		sendErrorResponse(ctx, logger, endpoint, "", ErrorMsg{GoCode: 1994, Err: err})
+// 		return
+// 	}
+// 	productCode := fmt.Sprintf("%v", productCodeIValue)
 
-	// read parameter URI
-	// Get the map of query parameters from the URL
-	req := make(map[string]interface{})
-	queryParams := ctx.Request.URL.Query()
-	// Iterate through the map and print the key-value pairs
-	for key, values := range queryParams {
-		// If there is only one value, add it directly to the map
-		if len(values) == 1 {
-			req[key] = values[0]
-		} else {
-			// If there are multiple values, add them as a slice of strings
-			req[key] = values
-		}
-	}
+// 	// get user config
+// 	userRepo := repo.NewUserRepo(logger)
+// 	_, userNameIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "userName", req)
+// 	userName := fmt.Sprintf("%v", userNameIValue)
+// 	_, err := userRepo.Find(userName)
+// 	if err != nil {
+// 		logger.Debug(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err}) // TODO
+// 		return
+// 	}
 
-	// get productCode
-	productCodeKey, productCodeIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "productCode", req)
-	if productCodeKey.Parent == "" && productCodeKey.Field == "" {
-		err := errors.New("product code route not set yet by Finnet.")
-		sendErrorResponse(ctx, logger, endpoint, "", ErrorMsg{GoCode: 1994, Err: err})
-		return
-	}
-	productCode := fmt.Sprintf("%v", productCodeIValue)
+// 	// validating IP based on rules on DB
+// 	ipConfigRepo := repo.NewIpConfigRepo(logger)
+// 	validIP, err := ipConfigRepo.FindIpByIpUsernameAndProductCode(ctx.ClientIP(), userName, productCode)
+// 	if err != nil {
+// 		logger.Debug(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 5, Err: err}) // TODO
+// 		return
+// 	}
 
-	// get user config
-	userRepo := repo.NewUserRepo(logger)
-	_, userNameIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "userName", req)
-	userName := fmt.Sprintf("%v", userNameIValue)
-	_, err := userRepo.Find(userName)
-	if err != nil {
-		logger.Debug(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err}) // TODO
-		return
-	}
+// 	if !validIP {
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1994, Err: nil}) // TODO
+// 		return
+// 	}
 
-	// validating IP based on rules on DB
-	ipConfigRepo := repo.NewIpConfigRepo(logger)
-	validIP, err := ipConfigRepo.FindIpByIpUsernameAndProductCode(ctx.ClientIP(), userName, productCode)
-	if err != nil {
-		logger.Debug(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 5, Err: err}) // TODO
-		return
-	}
+// 	// get user product config
+// 	userProductRepo := repo.NewUserProductRepo(logger)
+// 	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: userName}, ProductCode: sql.NullString{String: productCode}})
+// 	if err != nil {
+// 		logger.Error(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 17, Err: nil})
+// 		return
+// 	}
 
-	if !validIP {
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1994, Err: nil}) // TODO
-		return
-	}
+// 	if userProductConf.RCSuccess == nil {
+// 		err = errors.New("RC mapping not set yet by Finnet.")
+// 		logger.Error(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err})
+// 		return
+// 	}
 
-	// get user product config
-	userProductRepo := repo.NewUserProductRepo(logger)
-	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: userName}, ProductCode: sql.NullString{String: productCode}})
-	if err != nil {
-		logger.Error(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 17, Err: nil})
-		return
-	}
+// 	// route product_code mapping to TS adapter
+// 	if userProductConf.ProductCodeMapped.String != "" {
+// 		productCode = userProductConf.ProductCodeMapped.String
+// 	}
 
-	if userProductConf.RCSuccess == nil {
-		err = errors.New("RC mapping not set yet by Finnet.")
-		logger.Error(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err})
-		return
-	}
+// 	// find billNumber
+// 	billNumberKey, billNumberIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "billNumber", req)
+// 	billNumber := fmt.Sprintf("%v", billNumberIValue)
+// 	if billNumberKey.Parent == "" && billNumberKey.Field == "" {
+// 		err := errors.New("bill number route not set yet.")
+// 		logger.Debug(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err})
+// 	}
 
-	// route product_code mapping to TS adapter
-	if userProductConf.ProductCodeMapped.String != "" {
-		productCode = userProductConf.ProductCodeMapped.String
-	}
+// 	// ======================== BEGIN process to TS Adapter
+// 	assignService := service.NewAssignService(logger, endpoint, productCode)
+// 	coreService := service.NewCoreService(logger)
 
-	// find billNumber
-	billNumberKey, billNumberIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "billNumber", req)
-	billNumber := fmt.Sprintf("%v", billNumberIValue)
-	if billNumberKey.Parent == "" && billNumberKey.Field == "" {
-		err := errors.New("bill number route not set yet.")
-		logger.Debug(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err})
-	}
+// 	constructedBit61 := ""
 
-	// ======================== BEGIN process to TS Adapter
-	assignService := service.NewAssignService(logger, endpoint, productCode)
-	coreService := service.NewCoreService(logger)
+// 	// set constructed billNumber
+// 	if billNumberIValue != nil {
 
-	constructedBit61 := ""
+// 		constructedBit61 = coreService.ConstructBit61(productCode, billNumber)
 
-	// set constructed billNumber
-	if billNumberIValue != nil {
+// 		if billNumberKey.Parent == "" {
+// 			req[billNumberKey.Field] = constructedBit61
+// 		} else {
+// 			// if it has parent key
+// 			parentRCObject := req[billNumberKey.Parent]
+// 			valueOfVariableParentRC := reflect.ValueOf(parentRCObject)
+// 			newParentRCObject := make(map[string]interface{})
+// 			switch valueOfVariableParentRC.Kind() {
+// 			case reflect.Map:
+// 				iter := valueOfVariableParentRC.MapRange()
+// 				for iter.Next() {
+// 					if iter.Key().String() == billNumberKey.Field {
+// 						newParentRCObject[iter.Key().String()] = constructedBit61
+// 					} else {
+// 						newParentRCObject[iter.Key().String()] = iter.Value().Interface()
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
 
-		constructedBit61 = coreService.ConstructBit61(productCode, billNumber)
+// 	// assign server Request to TS request
+// 	tsReq, err := assignService.AssignMiddlewareRequest2("ts_adapter", process, &userProductConf, req)
+// 	if err != nil {
+// 		logger.Error(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 7000, Err: err})
+// 		return
+// 	}
 
-		if billNumberKey.Parent == "" {
-			req[billNumberKey.Field] = constructedBit61
-		} else {
-			// if it has parent key
-			parentRCObject := req[billNumberKey.Parent]
-			valueOfVariableParentRC := reflect.ValueOf(parentRCObject)
-			newParentRCObject := make(map[string]interface{})
-			switch valueOfVariableParentRC.Kind() {
-			case reflect.Map:
-				iter := valueOfVariableParentRC.MapRange()
-				for iter.Next() {
-					if iter.Key().String() == billNumberKey.Field {
-						newParentRCObject[iter.Key().String()] = constructedBit61
-					} else {
-						newParentRCObject[iter.Key().String()] = iter.Value().Interface()
-					}
-				}
-			}
-		}
-	}
+// 	// prepare to receive response
+// 	var coreResponse map[string]interface{}
+// 	middlewResponseIDs, coreResponse, err := coreService.Request2(process, &userProductConf, tsReq)
+// 	if err != nil {
+// 		logger.Error(err.Error())
+// 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+// 			sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 68, Err: nil}) // TODO
+// 			return
+// 		} else if err == sql.ErrNoRows {
+// 			sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err}) // TODO
+// 			return
+// 		}
 
-	// assign server Request to TS request
-	tsReq, err := assignService.AssignMiddlewareRequest("ts_adapter", process, &userProductConf, req)
-	if err != nil {
-		logger.Error(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 7000, Err: err})
-		return
-	}
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 7000, Err: err}) // TODO
+// 		return
+// 	}
+// 	// ======================== END process to TS Adapter
 
-	// prepare to receive response
-	var coreResponse map[string]interface{}
-	middlewResponseIDs, coreResponse, err := coreService.Request2(process, &userProductConf, tsReq)
-	if err != nil {
-		logger.Error(err.Error())
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 68, Err: nil}) // TODO
-			return
-		} else if err == sql.ErrNoRows {
-			sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err}) // TODO
-			return
-		}
+// 	// find rc key
+// 	rcKey, rcIValue := tool.FindFieldAs(logger, domain.MIDDLEWARE_RESPONSE, fmt.Sprintf("ts_adapter|%v", process), "rc", coreResponse)
+// 	if rcKey.Parent == "" && rcKey.Field == "" {
+// 		err := errors.New("Middleware RC route not set yet.")
+// 		logger.Debug(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err})
+// 		return
+// 	}
 
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 7000, Err: err}) // TODO
-		return
-	}
-	// ======================== END process to TS Adapter
+// 	// if rc is null or empty string then set it to 7000: "System Maintenance"
+// 	if rcIValue == nil || rcIValue == "" {
+// 		rcIValue = 7000
+// 	}
 
-	// find rc key
-	rcKey, rcIValue := tool.FindFieldAs(logger, domain.MIDDLEWARE_RESPONSE, fmt.Sprintf("ts_adapter|%v", process), "rc", coreResponse)
-	if rcKey.Parent == "" && rcKey.Field == "" {
-		err := errors.New("Middleware RC route not set yet.")
-		logger.Debug(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 1706, Err: err})
-		return
-	}
+// 	rc := fmt.Sprintf("%v", rcIValue)
 
-	// if rc is null or empty string then set it to 7000: "System Maintenance"
-	if rcIValue == nil || rcIValue == "" {
-		rcIValue = 7000
-	}
+// 	// assign value
+// 	serverResponse, err := assignService.AssignServerResponse2(productCode, endpoint, middlewResponseIDs, coreResponse)
+// 	if err != nil {
+// 		logger.Error(err.Error())
+// 		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 5, Err: err})
+// 		return
+// 	}
 
-	rc := fmt.Sprintf("%v", rcIValue)
+// 	serverResponseText, err := assignService.OrderingServerResponse(serverResponse)
+// 	if err != nil {
+// 		logger.Error("Inquiry", zenlogger.ZenField{Key: "err", Value: err.Error()})
+// 	}
 
-	// assign value
-	serverResponse, err := assignService.AssignServerResponse(productCode, endpoint, middlewResponseIDs, coreResponse)
-	if err != nil {
-		logger.Error(err.Error())
-		sendErrorResponse(ctx, logger, endpoint, productCode, ErrorMsg{GoCode: 5, Err: err})
-		return
-	}
+// 	if (rcIValue != nil || rcIValue != "") && tool.CheckRCStatus(logger, rc, userProductConf.RCSuccess) {
 
-	serverResponseText, err := assignService.OrderingServerResponse(serverResponse)
-	if err != nil {
-		logger.Error("Inquiry", zenlogger.ZenField{Key: "err", Value: err.Error()})
-	}
+// 		fmt.Println(logger.Debug("serverResponse", zenlogger.ZenField{Key: "status", Value: "success"}, zenlogger.ZenField{Key: "value", Value: serverResponse}))
 
-	if (rcIValue != nil || rcIValue != "") && tool.CheckRCStatus(logger, rc, userProductConf.RCSuccess) {
+// 		ctx.String(http.StatusOK, serverResponseText)
+// 	} else {
+// 		ctx.String(http.StatusOK, serverResponseText)
+// 	}
 
-		fmt.Println(logger.Debug("serverResponse", zenlogger.ZenField{Key: "status", Value: "success"}, zenlogger.ZenField{Key: "value", Value: serverResponse}))
+// 	return
 
-		ctx.String(http.StatusOK, serverResponseText)
-	} else {
-		ctx.String(http.StatusOK, serverResponseText)
-	}
-
-	return
-
-}
+// }

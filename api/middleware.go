@@ -2,6 +2,7 @@ package api
 
 import (
 	"alfamart-channel/domain"
+	"alfamart-channel/models"
 	"alfamart-channel/repo"
 	"alfamart-channel/service"
 	"alfamart-channel/tool"
@@ -15,8 +16,10 @@ import (
 func (server *DefaultServer) validate() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
-		logger := server.setupLogger()
 
+		endpoint := ctx.Request.URL.Path
+
+		logger := server.setupLogger()
 		// read parameter URI
 		// Get the map of query parameters from the URL
 		req := make(map[string]interface{})
@@ -34,11 +37,11 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 		logger.Debug("validate", zenlogger.ZenField{Key: "queryParams", Value: queryParams}, zenlogger.ZenField{Key: "req", Value: req})
 
 		// find productCode
-		_, productCodeIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, ctx.Request.URL.Path, "productCode", req)
+		_, productCodeIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "productCode", req)
 		if productCodeIValue == nil {
 			err := errors.New("Product code route not set yet")
 			logger.Error(err.Error())
-			errorMsg := ErrorMsg{GoCode: 1706, Err: err}
+			errorMsg := models.ErrorMsg{GoCode: 1706, Err: err}
 			logger.Debug("sendErrorResponse", zenlogger.ZenField{Key: "requestURI", Value: ctx.Request.URL.Path})
 			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, "", errorMsg)
 			return
@@ -48,6 +51,7 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 
 		// validate request body using configuration DB
 		if valid, errRes := validateRequest(logger, ctx.Request.URL.Path, req); !valid {
+			logger.Error("validate", zenlogger.ZenField{Key: "valid", Value: valid})
 			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, ctx.Request.URL.Path, errRes)
 			return
 		}
@@ -57,12 +61,12 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 		valid, err := ipConfigRepo.FindIp(ctx.ClientIP())
 		if err != nil {
 			logger.Error(err.Error())
-			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 1706, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 1706, Err: err})
 			return
 		}
 
 		if !valid {
-			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 1994, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 1994, Err: err})
 			return
 		}
 
@@ -70,19 +74,19 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 		valid, err = signatureService.Check(ctx.Request.URL.Path, req)
 		if err != nil {
 			logger.Error(err.Error())
-			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 1706, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 1706, Err: err})
 			return
 		}
 		if !valid {
 			logger.Info("Invalid signature")
-			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 36, Err: err})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 36, Err: err})
 			return
 		}
 
 		// newBody, err := json.Marshal(req)
 		// if err != nil {
 		// 	logger.Error("Fail to re-wrap request", zenlogger.ZenField{Key: "error", Value: err})
-		// 	sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, ErrorMsg{GoCode: 7000, Err: err})
+		// 	sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 7000, Err: err})
 		// 	return
 		// }
 		// ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
@@ -91,37 +95,27 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 	}
 }
 
-func validateRequest(logger zenlogger.Zenlogger, endpoint string, req map[string]interface{}) (valid bool, errRes ErrorMsg) {
+func validateRequest(logger zenlogger.Zenlogger, endpoint string, req map[string]interface{}) (valid bool, errRes models.ErrorMsg) {
 	valid = true
 	logger.Debug("validateRequest", zenlogger.ZenField{Key: "endpoint", Value: endpoint}, zenlogger.ZenField{Key: "req", Value: req})
 	validationMsg := ""
 
 	serverRequestRepo := repo.NewServerRequestRepo(logger)
-	configs, err := serverRequestRepo.FindAllByEndpoint(endpoint)
+	configs, err := serverRequestRepo.FindRequestQueryByEndpoint(endpoint)
 	if err != nil {
 		logger.Error(err.Error())
 	}
-	logger.Debug("validateRequest", zenlogger.ZenField{Key: "configs", Value: configs})
+
+	logger.Debug("validateRequest", zenlogger.ZenField{Key: "endpoint", Value: endpoint}, zenlogger.ZenField{Key: "req", Value: req}, zenlogger.ZenField{Key: "configs", Value: configs})
 	for _, field := range configs {
+		value := ""
 		ok := false
-		// check if config has parent
-		if field.ParentId.Int64 == 0 {
-			_, ok = req[field.Field.String]
-			// if field exist check if it is not empty
-			if ok {
-				ok = !(req[field.Field.String] == "" || req[field.Field.String] == "null" || req[field.Field.String] == nil)
-			}
-		} else {
-			// otherwise check if field exist in its parent
-			parentField, parent_ok := req[field.FieldParent.String].(map[string]interface{})
-			ok = parent_ok
-			// if field exist check if it is not empty
-			if ok {
-				_, ok = parentField[field.Field.String]
-				if ok {
-					ok = (parentField[field.Field.String] != "" && parentField[field.Field.String] != "null" && parentField[field.Field.String] != nil)
-				}
-			}
+
+		_, ok = req[field.Field.String]
+		// if field exist check if it is not empty
+		if ok {
+			ok = !(req[field.Field.String] == "" || req[field.Field.String] == "null" || req[field.Field.String] == nil)
+			value = fmt.Sprintf("%v", req[field.Field.String])
 		}
 
 		if field.Required.Bool && !ok {
@@ -141,6 +135,8 @@ func validateRequest(logger zenlogger.Zenlogger, endpoint string, req map[string
 			}
 			validationMsg += fmt.Sprintf("%s is forbided", field.Field.String)
 		}
+
+		logger.Debug("validateRequest", zenlogger.ZenField{Key: "field", Value: field.Field.String}, zenlogger.ZenField{Key: "value", Value: value}, zenlogger.ZenField{Key: "required", Value: field.Required.Bool}, zenlogger.ZenField{Key: "forbidded", Value: field.Forbidded.Bool}, zenlogger.ZenField{Key: "validationMsg", Value: validationMsg})
 	}
 
 	errRes.Err = errors.New(validationMsg)
@@ -148,36 +144,6 @@ func validateRequest(logger zenlogger.Zenlogger, endpoint string, req map[string
 	if !valid {
 		return
 	}
-
-	// check if field that not needed exist to prevent json injection
-	for reqField, _ := range req {
-		valid2 := false
-		for _, conField := range configs {
-			if reqField == conField.Field.String {
-				valid2 = true
-				break
-			}
-		}
-
-		if valid && !valid2 {
-			errRes.GoCode = 35
-			valid = false
-		}
-
-		if !valid2 && validationMsg != "" {
-			validationMsg += ", "
-		}
-
-		if !valid2 && validationMsg != "" {
-		}
-
-		if !valid2 {
-			validationMsg += fmt.Sprintf("%s tidak dibutuhkan", reqField)
-		}
-
-	}
-
-	errRes.Err = errors.New(validationMsg)
 
 	return
 }
