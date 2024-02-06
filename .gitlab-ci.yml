@@ -37,23 +37,23 @@ build:
 .deploy_template: &deploy
   script:
     - sed -i "s|APP_VERSION|$VERSION|g" src/helm/Chart.yaml
-    - sed -i "s|VAR_LOADBALANCER_IP|$VAR_LOADBALANCER_IP|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_SERVICE_NAME|$SERVICE_NAME|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_SERVER_ADDRESS|$SERVER_ADDRESS|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_SERVER_PORT|$SERVER_PORT|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_TS_URL|$TS_URL|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_NEVA_URL|$NEVA_URL|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_DB_USER|$DB_USER|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_DB_PASS|$DB_PASS|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_DB_ADDRESS|$DB_ADDRESS|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_DB_PORT|$DB_PORT|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_DB_NAME|$DB_NAME|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_LOG_TIME_FORMAT|$LOG_TIME_FORMAT|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_LOG_BEAUTIFY|$LOG_BEAUTIFY|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_LOG_OUTPUT|$LOG_OUTPUT|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_GIN_MODE|$GIN_MODE|g" src/helm/Frame-channel.yaml
-    - sed -i "s|VAR_ENV|$ENV|g" src/helm/Frame-channel.yaml
-    - helm upgrade --install $SERVICE_NAME src/helm -f src/helm/Frame-channel.yaml -n $NAMESPACE --wait --timeout 2m0s
+    - sed -i "s|VAR_LOADBALANCER_IP|$VAR_LOADBALANCER_IP|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_SERVICE_NAME|$SERVICE_NAME|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_SERVER_ADDRESS|$SERVER_ADDRESS|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_SERVER_PORT|$SERVER_PORT|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_TS_URL|$TS_URL|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_NEVA_URL|$NEVA_URL|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_DB_USER|$DB_USER|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_DB_PASS|$DB_PASS|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_DB_ADDRESS|$DB_ADDRESS|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_DB_PORT|$DB_PORT|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_DB_NAME|$DB_NAME|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_LOG_TIME_FORMAT|$LOG_TIME_FORMAT|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_LOG_BEAUTIFY|$LOG_BEAUTIFY|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_LOG_OUTPUT|$LOG_OUTPUT|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_GIN_MODE|$GIN_MODE|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_ENV|$ENV|g" src/helm/alfamart-channel.yaml
+    - helm upgrade --install $SERVICE_NAME src/helm -f src/helm/alfamart-channel.yaml -n $NAMESPACE --wait --timeout 2m0s
   when: on_success
   allow_failure: false    
 
@@ -68,7 +68,7 @@ deploy_staging:
     DEPLOY_ENVIRONMENT: dev
   after_script:
     - less src/helm/Chart.yaml
-    - less src/helm/Frame-channel.yaml
+    - less src/helm/alfamart-channel.yaml
   only:
     refs:
       - master
@@ -85,7 +85,7 @@ deploy_production:
     VERSION: $CI_COMMIT_TAG
   after_script:
     - less src/helm/Chart.yaml
-    - less src/helm/Frame-channel.yaml    
+    - less src/helm/alfamart-channel.yaml    
   only:
     refs:
       - tags

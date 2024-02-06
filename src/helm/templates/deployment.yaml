@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alfamart-channel.fullname" . }}
+  labels:
+    {{- include "alfamart-channel.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "alfamart-channel.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "alfamart-channel.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "alfamart-channel.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: "SERVER_ADDRESS"
+              valueFrom:
+                secretKeyRef:
+                  key: SERVER_ADDRESS
+                  name: {{ .Chart.Name }}-env
+            - name: "SERVER_PORT"
+              valueFrom:
+                secretKeyRef:
+                  key: SERVER_PORT
+                  name: {{ .Chart.Name }}-env
+            - name: "TS_URL"
+              valueFrom:
+                secretKeyRef:
+                  key: TS_URL
+                  name: {{ .Chart.Name }}-env
+            - name: "EVA_URL"
+              valueFrom:
+                secretKeyRef:
+                  key: EVA_URL
+                  name: {{ .Chart.Name }}-env
+            - name: "DB_USER"
+              valueFrom:
+                secretKeyRef:
+                  key: DB_USER
+                  name: {{ .Chart.Name }}-env
+            - name: "DB_PASS"
+              valueFrom:
+                secretKeyRef:
+                  key: DB_PASS
+                  name: {{ .Chart.Name }}-env
+            - name: "DB_ADDRESS"
+              valueFrom:
+                secretKeyRef:
+                  key: DB_ADDRESS
+                  name: {{ .Chart.Name }}-env
+            - name: "DB_PORT"
+              valueFrom:
+                secretKeyRef:
+                  key: DB_PORT
+                  name: {{ .Chart.Name }}-env
+            - name: "DB_NAME"
+              valueFrom:
+                secretKeyRef:
+                  key: DB_NAME
+                  name: {{ .Chart.Name }}-env
+            - name: "LOG_TIME_FORMAT"
+              valueFrom:
+                secretKeyRef:
+                  key: LOG_TIME_FORMAT
+                  name: {{ .Chart.Name }}-env
+            - name: "LOG_BEAUTIFY"
+              valueFrom:
+                secretKeyRef:
+                  key: LOG_BEAUTIFY
+                  name: {{ .Chart.Name }}-env
+            - name: "LOG_OUTPUT"
+              valueFrom:
+                secretKeyRef:
+                  key: LOG_OUTPUT
+                  name: {{ .Chart.Name }}-env
+            - name: "GIN_MODE"
+              valueFrom:
+                secretKeyRef:
+                  key: GIN_MODE
+                  name: {{ .Chart.Name }}-env
+            - name: "ENV"
+              valueFrom:
+                secretKeyRef:
+                  key: ENV
+                  name: {{ .Chart.Name }}-env
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.initialDelaySeconds }}
+            httpGet:
+              path: /service/alive
+              port: http
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.initialDelaySeconds }}
+            httpGet:
+              path: /service/alive
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
