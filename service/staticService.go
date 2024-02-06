@@ -173,6 +173,10 @@ func (service *DefaultStaticService) Payment(request models.Request) (response s
 
 	timeStamp, _ := time.Parse("20060102150405", service.request.DateTimeRequest)
 
+	service.trxLog.SourceMerchant = sql.NullString{String: userProductConf.Bit33.String, Valid: true}
+	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
+	service.trxLog.Amount = sql.NullFloat64{Float64: 0, Valid: true}
+
 	req := map[string]interface{}{
 		"userName":         service.request.AgentID,
 		"caCode":           userProductConf.Bit32.String,
