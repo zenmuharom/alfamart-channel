@@ -77,15 +77,15 @@ func (server *DefaultServer) setupRouter() {
 	handler := NewHandler()
 
 	router := gin.New()
-	router.Use(server.Logger())
 	router.GET("/service/alive", func(ctx *gin.Context) {
 		resp := map[string]string{"status": "OK"}
 		ctx.JSON(http.StatusOK, resp)
 	})
 
-	router.GET("/adira/inquiry", handler.StaticInquiry)
-	router.GET("/adira/payment", handler.StaticPayment)
-	router.GET("/adira/commit", handler.StaticCommit)
+	trx := router.Group("").Use(server.Logger())
+	trx.GET("/adira/inquiry", handler.StaticInquiry)
+	trx.GET("/adira/payment", handler.StaticPayment)
+	trx.GET("/adira/commit", handler.StaticCommit)
 
 	handlers := map[string]gin.HandlerFunc{
 		"general": handler.General,
