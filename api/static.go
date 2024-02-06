@@ -92,12 +92,25 @@ func (handler *DefaultHandler) StaticPayment(ctx *gin.Context) {
 		logger.Error("StaticPayment", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while decode request body to map"})
 	}
 
+	trxLog.SourceCode = sql.NullString{String: "PAYMENT", Valid: true}
+
 	staticService := service.NewStaticService(logger, &trxLog)
 	response, err := staticService.Payment(request)
 	if err != nil {
 		logger.Error("StaticPayment", zenlogger.ZenField{Key: "error", Value: err.Error()})
 	}
 
+	// encode trx_log back
+	trxLogByte, errEnc := json.Marshal(trxLog)
+	if errEnc != nil {
+		logger.Error("Trx",
+			zenlogger.ZenField{Key: "error", Value: errEnc.Error()},
+			zenlogger.ZenField{Key: "addition", Value: "error while call trxLogStr, errEnc = json.Marshal(trxLog)"},
+			zenlogger.ZenField{Key: "trxLog", Value: trxLog},
+		)
+	}
+
+	ctx.Header("trx_log", string(trxLogByte))
 	ctx.String(http.StatusOK, response)
 }
 
@@ -128,6 +141,8 @@ func (handler *DefaultHandler) StaticCommit(ctx *gin.Context) {
 	if err != nil {
 		logger.Error("StaticCommit", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while decode request body to map"})
 	}
+
+	trxLog.SourceCode = sql.NullString{String: "COMMIT", Valid: true}
 
 	staticService := service.NewStaticService(logger, &trxLog)
 	response, err := staticService.Commit(request)

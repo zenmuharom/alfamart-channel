@@ -163,7 +163,7 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 }
 
 func (service *DefaultStaticService) Payment(request models.PaymentReq) (response string, err error) {
-
+	rcProcess := "05"
 	userProductRepo := repo.NewUserProductRepo(service.logger)
 	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: request.AgentID}, ProductCode: sql.NullString{String: request.ProductID}})
 
@@ -177,19 +177,28 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	trx, err := trxRepo.FindByTargetNumber(targetNumber)
 	if err != nil {
 		if err.Error() == sql.ErrNoRows.Error() {
+			rcProcess = "05"
 			service.logger.Info("Payment", zenlogger.ZenField{Key: "error", Value: err.Error()})
 		} else {
 			service.logger.Error("Payment", zenlogger.ZenField{Key: "error", Value: err.Error()})
 		}
 	}
 
-	rcProcess := "7050"
-	if request.Total == strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")) {
-		rcProcess = "00"
+	if err == nil {
+		if request.Total == strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")) {
+			rcProcess = "00"
+		} else {
+			rcProcess = "7050"
+		}
 	}
 
 	// mapping RC
 	resultCode, resultDesc := service.mappingRC(userProductConf.ProductCodeMapped.String, rcProcess)
+
+	service.trxLog.TargetNumber = sql.NullString{String: targetNumber, Valid: true}
+	service.trxLog.Bit61 = sql.NullString{String: trx.Bit61.String, Valid: true}
+	service.trxLog.Rc = sql.NullString{String: resultCode, Valid: true}
+	service.trxLog.RcDesc = sql.NullString{String: resultDesc, Valid: true}
 
 	arrRes := []string{}
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
@@ -212,6 +221,8 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			request.ProductID, // ProductID
 		}
 
+		service.trxLog.Status = sql.NullString{String: "approve", Valid: true}
+
 	} else {
 		arrRes = []string{
 			request.AgentID,                     // AgentID
@@ -232,6 +243,8 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			request.ProductID,                   // ProductID
 		}
 	}
+
+	service.writeLog()
 
 	response = strings.Join(arrRes, "|")
 
