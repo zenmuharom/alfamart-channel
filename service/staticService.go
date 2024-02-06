@@ -4,7 +4,9 @@ import (
 	"alfamart-channel/domain"
 	"alfamart-channel/models"
 	"alfamart-channel/repo"
+	"alfamart-channel/tool"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -29,6 +31,18 @@ func NewStaticService(logger zenlogger.Zenlogger, trxLog *domain.Trx) StaticServ
 		logger: logger,
 		trxLog: trxLog,
 	}
+}
+
+func (this *DefaultStaticService) writeLog() (errRes error) {
+	this.logger.Debug("writeLog", zenlogger.ZenField{Key: "trxLog", Value: this.trxLog})
+	trxLog := tool.NewTrxLog(this.logger)
+	if err := trxLog.Write(this.trxLog); err != nil {
+		errDesc := this.logger.Error("writeLog", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while call if err := trxLog.Write(\"\", \"\"); err != nil {"})
+		errRes = errors.New(errDesc)
+		return
+	}
+
+	return
 }
 
 func (service *DefaultStaticService) Inquiry(request models.Request) (response string, err error) {
