@@ -1,7 +1,7 @@
-package repository
+package repo
 
 import (
-	"frame_cico/internal/domain"
+	"alfamart-channel/domain"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/zenmuharom/zenlogger"
