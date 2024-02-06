@@ -16,6 +16,8 @@ type DefaultTrxRepo struct {
 type TrxRepo interface {
 	FindAll() ([]domain.Trx, error)
 	FindByTargetNumber(targetNumber string) (trx domain.Trx, errRes error)
+	FindByInquiryPayment(targetNumber string) (trx domain.Trx, errRes error)
+	FindByCommit(targetNumber string) (trx domain.Trx, errRes error)
 	Insert(data domain.Trx) (inserted *domain.Trx, errRes error)
 	Upsert(data domain.Trx) (updated *domain.Trx, errRes error)
 }
@@ -45,8 +47,77 @@ func (repo *DefaultTrxRepo) FindAll() ([]domain.Trx, error) {
 
 func (repo *DefaultTrxRepo) FindByTargetNumber(targetNumber string) (trx domain.Trx, errRes error) {
 
-	sqlStmt := `SELECT pid, amendment_date, source_code, source_merchant, target_product, target_number, bit61, amount, status, rc, rc_desc FROM trx WHERE deleted_at IS NULL AND target_number = ? LIMIT 1`
+	sqlStmt := `SELECT pid, amendment_date, source_code, source_merchant, target_product, target_number, bit61, amount, status, rc, rc_desc FROM trx WHERE deleted_at IS NULL AND status = 'approve' AND created_at >= NOW() - INTERVAL 3 MINUTE AND target_number = ? LIMIT 1`
 	repo.logger.Debug("FindByTargetNumber", zenlogger.ZenField{Key: "sqlStmt", Value: sqlStmt}, zenlogger.ZenField{Key: "targetNumber", Value: targetNumber})
+
+	err := repo.db.Get(&trx, sqlStmt, targetNumber)
+	if err != nil {
+		if err.Error() != sql.ErrNoRows.Error() {
+			repo.logger.Error("FindAll", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while call err := repo.db.Select(&trx, sqlStmt)"})
+		}
+		return trx, err
+	}
+
+	return trx, nil
+}
+
+func (repo *DefaultTrxRepo) FindByInquiryPayment(targetNumber string) (trx domain.Trx, errRes error) {
+
+	sqlStmt := `SELECT pay.pid, pay.amendment_date, pay.source_code, pay.source_merchant, pay.target_product, pay.target_number, pay.bit61, pay.amount, pay.status, pay.rc, pay.rc_desc FROM trx inq JOIN trx pay ON inq.status = 'approve' AND pay.status = 'approve' AND inq.target_number = pay.target_number AND pay.source_code = 'PAYMENT' AND inq.status = pay.status AND inq.deleted_at IS NULL AND pay.deleted_at IS NULL AND inq.created_at >= NOW( ) - INTERVAL 3 MINUTE AND pay.created_at >= NOW( ) - INTERVAL 3 MINUTE WHERE inq.source_code = 'INQUIRY' AND inq.target_number = ? LIMIT 1`
+	repo.logger.Debug("FindByInquiryPayment", zenlogger.ZenField{Key: "sqlStmt", Value: sqlStmt}, zenlogger.ZenField{Key: "targetNumber", Value: targetNumber})
+
+	err := repo.db.Get(&trx, sqlStmt, targetNumber)
+	if err != nil {
+		if err.Error() != sql.ErrNoRows.Error() {
+			repo.logger.Error("FindAll", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while call err := repo.db.Select(&trx, sqlStmt)"})
+		}
+		return trx, err
+	}
+
+	return trx, nil
+}
+
+func (repo *DefaultTrxRepo) FindByCommit(targetNumber string) (trx domain.Trx, errRes error) {
+
+	sqlStmt := `
+SELECT
+	pay.pid,
+	pay.amendment_date,
+	pay.source_code,
+	pay.source_merchant,
+	pay.target_product,
+	pay.target_number,
+	pay.bit61,
+	pay.amount,
+	pay.status,
+	pay.rc,
+	pay.rc_desc 
+FROM
+	trx inq
+JOIN
+	trx pay 
+ON
+	inq.target_number = pay.target_number
+	AND pay.source_code = 'PAYMENT'
+	AND inq.status = pay.status
+	AND inq.deleted_at IS NULL
+	AND pay.deleted_at IS NULL
+	AND inq.status = pay.status
+WHERE
+	inq.source_code = 'INQUIRY'
+	AND inq.status = 'approve'
+	AND inq.target_number = ?
+	AND NOT EXISTS (
+		SELECT
+			1
+		FROM
+			trx com
+		WHERE
+			com.target_number = pay.target_number 
+			AND com.source_code = 'COMMIT'
+	)
+LIMIT 1`
+	repo.logger.Debug("FindByCommit", zenlogger.ZenField{Key: "sqlStmt", Value: sqlStmt}, zenlogger.ZenField{Key: "targetNumber", Value: targetNumber})
 
 	err := repo.db.Get(&trx, sqlStmt, targetNumber)
 	if err != nil {

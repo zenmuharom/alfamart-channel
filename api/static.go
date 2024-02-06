@@ -53,7 +53,7 @@ func (handler *DefaultHandler) StaticInquiry(ctx *gin.Context) {
 	// encode trx_log back
 	trxLogByte, errEnc := json.Marshal(trxLog)
 	if errEnc != nil {
-		logger.Error("Trx",
+		logger.Error("StaticInquiry",
 			zenlogger.ZenField{Key: "error", Value: errEnc.Error()},
 			zenlogger.ZenField{Key: "addition", Value: "error while call trxLogStr, errEnc = json.Marshal(trxLog)"},
 			zenlogger.ZenField{Key: "trxLog", Value: trxLog},
@@ -103,7 +103,7 @@ func (handler *DefaultHandler) StaticPayment(ctx *gin.Context) {
 	// encode trx_log back
 	trxLogByte, errEnc := json.Marshal(trxLog)
 	if errEnc != nil {
-		logger.Error("Trx",
+		logger.Error("StaticPayment",
 			zenlogger.ZenField{Key: "error", Value: errEnc.Error()},
 			zenlogger.ZenField{Key: "addition", Value: "error while call trxLogStr, errEnc = json.Marshal(trxLog)"},
 			zenlogger.ZenField{Key: "trxLog", Value: trxLog},
@@ -150,6 +150,17 @@ func (handler *DefaultHandler) StaticCommit(ctx *gin.Context) {
 		logger.Error("StaticCommit", zenlogger.ZenField{Key: "error", Value: err.Error()})
 	}
 
+	// encode trx_log back
+	trxLogByte, errEnc := json.Marshal(trxLog)
+	if errEnc != nil {
+		logger.Error("StaticCommit",
+			zenlogger.ZenField{Key: "error", Value: errEnc.Error()},
+			zenlogger.ZenField{Key: "addition", Value: "error while call trxLogStr, errEnc = json.Marshal(trxLog)"},
+			zenlogger.ZenField{Key: "trxLog", Value: trxLog},
+		)
+	}
+
+	ctx.Header("trx_log", string(trxLogByte))
 	ctx.String(http.StatusOK, response)
 }
 
