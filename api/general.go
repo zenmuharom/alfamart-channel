@@ -17,7 +17,9 @@ type DefaultHandler struct {
 
 type Handler interface {
 	General(ctx *gin.Context)
-	Static(ctx *gin.Context)
+	StaticInquiry(ctx *gin.Context)
+	StaticPayment(ctx *gin.Context)
+	StaticCommit(ctx *gin.Context)
 }
 
 func NewHandler() Handler {

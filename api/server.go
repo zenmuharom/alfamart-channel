@@ -83,7 +83,9 @@ func (server *DefaultServer) setupRouter() {
 		ctx.JSON(http.StatusOK, resp)
 	})
 
-	router.GET("/adira/inquiry", handler.Static)
+	router.GET("/adira/inquiry", handler.StaticInquiry)
+	router.GET("/adira/payment", handler.StaticPayment)
+	router.GET("/adira/commit", handler.StaticCommit)
 
 	handlers := map[string]gin.HandlerFunc{
 		"general": handler.General,
