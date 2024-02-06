@@ -2,6 +2,7 @@ package repo
 
 import (
 	"alfamart-channel/domain"
+	"database/sql"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/zenmuharom/zenlogger"
@@ -14,6 +15,7 @@ type DefaultTrxRepo struct {
 
 type TrxRepo interface {
 	FindAll() ([]domain.Trx, error)
+	FindByTargetNumber(targetNumber string) (trx domain.Trx, errRes error)
 	Insert(data domain.Trx) (inserted *domain.Trx, errRes error)
 	Upsert(data domain.Trx) (updated *domain.Trx, errRes error)
 }
@@ -39,6 +41,22 @@ func (repo *DefaultTrxRepo) FindAll() ([]domain.Trx, error) {
 	}
 
 	return merchants, nil
+}
+
+func (repo *DefaultTrxRepo) FindByTargetNumber(targetNumber string) (trx domain.Trx, errRes error) {
+
+	sqlStmt := `SELECT pid, amendment_date, source_code, source_merchant, target_product, target_number, bit61, amount, status, rc, rc_desc FROM trx WHERE deleted_at IS NULL AND target_number = ? LIMIT 1`
+	repo.logger.Debug("FindByTargetNumber", zenlogger.ZenField{Key: "sqlStmt", Value: sqlStmt}, zenlogger.ZenField{Key: "targetNumber", Value: targetNumber})
+
+	err := repo.db.Get(&trx, sqlStmt, targetNumber)
+	if err != nil {
+		if err.Error() != sql.ErrNoRows.Error() {
+			repo.logger.Error("FindAll", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while call err := repo.db.Select(&trx, sqlStmt)"})
+		}
+		return trx, err
+	}
+
+	return trx, nil
 }
 
 func (repo *DefaultTrxRepo) Insert(data domain.Trx) (inserted *domain.Trx, errRes error) {

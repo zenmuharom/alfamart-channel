@@ -5,6 +5,7 @@ import (
 	"alfamart-channel/models"
 	"alfamart-channel/repo"
 	"alfamart-channel/tool"
+	"alfamart-channel/util"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -15,15 +16,14 @@ import (
 )
 
 type DefaultStaticService struct {
-	logger  zenlogger.Zenlogger
-	request models.Request
-	trxLog  *domain.Trx
+	logger zenlogger.Zenlogger
+	trxLog *domain.Trx
 }
 
 type StaticService interface {
-	Inquiry(request models.Request) (response string, err error)
-	Payment(request models.Request) (response string, err error)
-	Commit(request models.Request) (response string, err error)
+	Inquiry(request models.InquiryReq) (response string, err error)
+	Payment(request models.PaymentReq) (response string, err error)
+	Commit(request models.CommitReq) (response string, err error)
 }
 
 func NewStaticService(logger zenlogger.Zenlogger, trxLog *domain.Trx) StaticService {
@@ -62,21 +62,19 @@ func (service *DefaultStaticService) mappingRC(productCode, goCode string) (resu
 	return
 }
 
-func (service *DefaultStaticService) Inquiry(request models.Request) (response string, err error) {
-
-	service.request = request
+func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (response string, err error) {
 
 	userProductRepo := repo.NewUserProductRepo(service.logger)
-	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: service.request.AgentID}, ProductCode: sql.NullString{String: service.request.ProductID}})
+	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: request.AgentID}, ProductCode: sql.NullString{String: request.ProductID}})
 
-	timeStamp, _ := time.Parse("20060102150405", service.request.DateTimeRequest)
+	timeStamp, _ := time.Parse("20060102150405", request.DateTimeRequest)
 
 	service.trxLog.SourceMerchant = sql.NullString{String: userProductConf.Bit33.String, Valid: true}
 	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
 	service.trxLog.Amount = sql.NullFloat64{Float64: 0, Valid: true}
 
 	req := map[string]interface{}{
-		"userName":         service.request.AgentID,
+		"userName":         request.AgentID,
 		"caCode":           userProductConf.Bit32.String,
 		"subcaCode":        userProductConf.Bit33.String,
 		"productCode":      userProductConf.ProductCodeMapped.String,
@@ -85,14 +83,14 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 		"terminalName":     "12 504 1398",
 		"terminalLocation": "Bidakara Pancoran",
 		"transactionType":  "38",
-		"billNumber":       service.request.CustomerID,
+		"billNumber":       request.CustomerID,
 		"amount":           "0",
 		"feeAmount":        "2500",
-		"bit61":            service.request.CustomerID,
-		"traxId":           service.request.AgentTrxID,
+		"bit61":            request.CustomerID,
+		"traxId":           request.AgentTrxID,
 		"timeStamp":        timeStamp.Format("2006-01-02 15:04:05:000"),
-		"additions":        service.request,
-		"Signature":        service.request.Signature,
+		"additions":        request,
+		"Signature":        request.Signature,
 	}
 
 	tsRepo := repo.NewTSRepo(service.logger)
@@ -101,10 +99,10 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 		service.logger.Error("Inquiry", zenlogger.ZenField{Key: "error", Value: err.Error()})
 	}
 
-	// TODO mapping RC
+	// mapping RC
 	resultCode, resultDesc := service.mappingRC(userProductConf.ProductCodeMapped.String, strings.Trim(fmt.Sprintf("%v", tsRes["resultCode"]), " "))
 
-	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + service.request.CustomerID + strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " ")
+	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " ") + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID
 	service.trxLog.TargetNumber = sql.NullString{String: targetNumber, Valid: true}
 	service.trxLog.Bit61 = sql.NullString{String: fmt.Sprintf("%v", tsRes["bit61"]), Valid: true}
 	service.trxLog.Rc = sql.NullString{String: resultCode, Valid: true}
@@ -120,15 +118,15 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 		)
 
 		arrRes = []string{
-			service.request.AgentID,                                        // AgentID
-			service.request.AgentPIN,                                       // AgentPIN
-			service.request.AgentTrxID,                                     // AgentTrxID
-			service.request.AgentStoreID,                                   // AgentStoreID
+			request.AgentID,      // AgentID
+			request.AgentPIN,     // AgentPIN
+			request.AgentTrxID,   // AgentTrxID
+			request.AgentStoreID, // AgentStoreID
 			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[0:20], " "), // CustomerID
-			service.request.DateTimeRequest,                                // DateTimeRequest
-			resultCode,                                                     // resultCode
-			resultDesc,                                                     // resultDesc
-			time.Now().Format("20060102150405"),                            // DatetimeResponse
+			request.DateTimeRequest,             // DateTimeRequest
+			resultCode,                          // resultCode
+			resultDesc,                          // resultDesc
+			time.Now().Format("20060102150405"), // DatetimeResponse
 			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " "), // PaymentPeriod
 			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[85:130], " "),  // CustomerName
 			customerInformation, // customerInformation
@@ -140,12 +138,12 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 
 	} else {
 		arrRes = []string{
-			service.request.AgentID,             // AgentID
-			service.request.AgentPIN,            // AgentPIN
-			service.request.AgentTrxID,          // AgentTrxID
-			service.request.AgentStoreID,        // AgentStoreID
-			service.request.CustomerID,          // CustomerID
-			service.request.DateTimeRequest,     // DateTimeRequest
+			request.AgentID,                     // AgentID
+			request.AgentPIN,                    // AgentPIN
+			request.AgentTrxID,                  // AgentTrxID
+			request.AgentStoreID,                // AgentStoreID
+			request.CustomerID,                  // CustomerID
+			request.DateTimeRequest,             // DateTimeRequest
 			resultCode,                          // resultCode
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DatetimeResponse
@@ -164,21 +162,95 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 	return
 }
 
-func (service *DefaultStaticService) Payment(request models.Request) (response string, err error) {
-
-	service.request = request
+func (service *DefaultStaticService) Payment(request models.PaymentReq) (response string, err error) {
 
 	userProductRepo := repo.NewUserProductRepo(service.logger)
-	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: service.request.AgentID}, ProductCode: sql.NullString{String: service.request.ProductID}})
+	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: request.AgentID}, ProductCode: sql.NullString{String: request.ProductID}})
 
-	timeStamp, _ := time.Parse("20060102150405", service.request.DateTimeRequest)
+	service.trxLog.SourceMerchant = sql.NullString{String: userProductConf.Bit33.String, Valid: true}
+	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
+	service.trxLog.Amount = sql.NullFloat64{Float64: 0, Valid: true}
+
+	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + strings.TrimRight(request.PaymentPeriod, " ") + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID
+
+	trxRepo := repo.NewTrxRepo(service.logger, util.GetDB())
+	trx, err := trxRepo.FindByTargetNumber(targetNumber)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			service.logger.Info("Payment", zenlogger.ZenField{Key: "error", Value: err.Error()})
+		} else {
+			service.logger.Error("Payment", zenlogger.ZenField{Key: "error", Value: err.Error()})
+		}
+	}
+
+	rcProcess := "7050"
+	if request.Total == strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")) {
+		rcProcess = "00"
+	}
+
+	// mapping RC
+	resultCode, resultDesc := service.mappingRC(userProductConf.ProductCodeMapped.String, rcProcess)
+
+	arrRes := []string{}
+	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
+		arrRes = []string{
+			request.AgentID,      // AgentID
+			request.AgentPIN,     // AgentPIN
+			request.AgentTrxID,   // AgentTrxID
+			request.AgentStoreID, // AgentStoreID
+			strings.TrimLeft(trx.Bit61.String[0:20], " "),                       // CustomerID
+			request.DateTimeRequest,                                             // DateTimeRequest
+			strings.TrimRight(trx.Bit61.String[144:147], " "),                   // PaymentPeriod
+			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")), // Amount
+			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[169:181], "0")), // Charge / Nilai Denda
+			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[195:207], "0")), // Total / min pembayaran
+			resultCode,                          // resultCode
+			resultDesc,                          // resultDesc
+			time.Now().Format("20060102150405"), // DateTimeResponse
+			strings.TrimLeft(trx.Bit61.String[75:85], " "), // Pengesahan
+			"Untuk info lebih lanjut buka www.partner.id",  // AdditionalData
+			request.ProductID, // ProductID
+		}
+
+	} else {
+		arrRes = []string{
+			request.AgentID,                     // AgentID
+			request.AgentPIN,                    // AgentPIN
+			request.AgentTrxID,                  // AgentTrxID
+			request.AgentStoreID,                // AgentStoreID
+			request.CustomerID,                  // CustomerID
+			request.DateTimeRequest,             // DateTimeRequest
+			request.PaymentPeriod,               // PaymentPeriod
+			request.Amount,                      // Amount
+			request.Charge,                      // Charge / Nilai Denda
+			request.Total,                       // Total / min pembayaran
+			resultCode,                          // resultCode
+			resultDesc,                          // resultDesc
+			time.Now().Format("20060102150405"), // DateTimeResponse
+			"",                                  // Pengesahan
+			"",                                  // AdditionalData
+			request.ProductID,                   // ProductID
+		}
+	}
+
+	response = strings.Join(arrRes, "|")
+
+	return
+}
+
+func (service *DefaultStaticService) Commit(request models.CommitReq) (response string, err error) {
+
+	userProductRepo := repo.NewUserProductRepo(service.logger)
+	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: request.AgentID}, ProductCode: sql.NullString{String: request.ProductID}})
+
+	timeStamp, _ := time.Parse("20060102150405", request.DateTimeRequest)
 
 	service.trxLog.SourceMerchant = sql.NullString{String: userProductConf.Bit33.String, Valid: true}
 	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
 	service.trxLog.Amount = sql.NullFloat64{Float64: 0, Valid: true}
 
 	req := map[string]interface{}{
-		"userName":         service.request.AgentID,
+		"userName":         request.AgentID,
 		"caCode":           userProductConf.Bit32.String,
 		"subcaCode":        userProductConf.Bit33.String,
 		"productCode":      userProductConf.ProductCodeMapped.String,
@@ -187,14 +259,14 @@ func (service *DefaultStaticService) Payment(request models.Request) (response s
 		"terminalName":     "12 504 1398",
 		"terminalLocation": "Bidakara Pancoran",
 		"transactionType":  "38",
-		"billNumber":       service.request.CustomerID,
+		"billNumber":       request.CustomerID,
 		"amount":           "0",
 		"feeAmount":        "2500",
-		"bit61":            service.request.CustomerID,
-		"traxId":           service.request.AgentTrxID,
+		"bit61":            request.CustomerID,
+		"traxId":           request.AgentTrxID,
 		"timeStamp":        timeStamp.Format("2006-01-02 15:04:05:000"),
-		"additions":        service.request,
-		"Signature":        service.request.Signature,
+		"additions":        request,
+		"Signature":        request.Signature,
 	}
 
 	tsRepo := repo.NewTSRepo(service.logger)
@@ -204,70 +276,11 @@ func (service *DefaultStaticService) Payment(request models.Request) (response s
 	}
 
 	arrRes := []string{
-		service.request.AgentID,                                            // AgentID
-		service.request.AgentPIN,                                           // AgentPIN
-		service.request.AgentTrxID,                                         // AgentTrxID
-		service.request.AgentStoreID,                                       // AgentStoreID
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[0:20], " "),     // CustomerID
-		service.request.DateTimeRequest,                                    // DateTimeRequest
-		strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " "), // PaymentPeriod
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[157:169], "0"),  // Amount
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[169:181], "0"),  // Charge / Nilai Denda
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[207:2019], "0"), // Total / min pembayaran
-		fmt.Sprintf("%v", tsRes["resultCode"]),                             // resultCode
-		fmt.Sprintf("%v", tsRes["resultDesc"]),                             // resultDesc
-		time.Now().Format("20060102150405"),                                // DateTimeResponse
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[75:85], " "),    // Pengesahan
-		"Untuk info lebih lanjut buka www.partner.id",                      // AdditionalData
-		service.request.ProductID,                                          // ProductID
-	}
-
-	response = strings.Join(arrRes, "|")
-
-	return
-}
-
-func (service *DefaultStaticService) Commit(request models.Request) (response string, err error) {
-
-	service.request = request
-
-	userProductRepo := repo.NewUserProductRepo(service.logger)
-	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: service.request.AgentID}, ProductCode: sql.NullString{String: service.request.ProductID}})
-
-	timeStamp, _ := time.Parse("20060102150405", service.request.DateTimeRequest)
-
-	req := map[string]interface{}{
-		"userName":         service.request.AgentID,
-		"caCode":           userProductConf.Bit32.String,
-		"subcaCode":        userProductConf.Bit33.String,
-		"productCode":      userProductConf.ProductCodeMapped.String,
-		"channel":          userProductConf.Bit18.String,
-		"terminal":         "B009TRKK",
-		"terminalName":     "12 504 1398",
-		"terminalLocation": "Bidakara Pancoran",
-		"transactionType":  "50",
-		"billNumber":       service.request.CustomerID,
-		"amount":           "0",
-		"feeAmount":        "2500",
-		"bit61":            service.request.CustomerID,
-		"traxId":           service.request.AgentTrxID,
-		"timeStamp":        timeStamp.Format("2006-01-02 15:04:05:000"),
-		"additions":        service.request,
-		"Signature":        service.request.Signature,
-	}
-
-	tsRepo := repo.NewTSRepo(service.logger)
-	tsRes, err := tsRepo.Request2(userProductConf.SwitchingUrl.String, int(userProductConf.TimeoutBiller.Int32), req)
-	if err != nil {
-		service.logger.Error("Inquiry", zenlogger.ZenField{Key: "error", Value: err.Error()})
-	}
-
-	arrRes := []string{
-		service.request.AgentID,    // AgentID
-		service.request.AgentPIN,   // AgentPIN
-		service.request.AgentTrxID, // AgentTrxID
+		request.AgentID,    // AgentID
+		request.AgentPIN,   // AgentPIN
+		request.AgentTrxID, // AgentTrxID
 		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[0:20], " "), // AgentStoreID / No NPP
-		service.request.DateTimeRequest,                                // DateTimeRequest
+		request.DateTimeRequest, // DateTimeRequest
 		fmt.Sprintf("%v", tsRes["resultCode"]),
 		fmt.Sprintf("%v", tsRes["resultDesc"]),
 		time.Now().Format("20060102150405"),                              // DateTimeResponse
