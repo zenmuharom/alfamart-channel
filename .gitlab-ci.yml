@@ -1,7 +1,7 @@
 image: alpine/helm
 
 variables:
-  SERVICE_NAME: frame-channel
+  SERVICE_NAME: alfamart-channel
   REPO: asia-southeast2-docker.pkg.dev/finnet-artifact/finpay-billing
   NAMESPACE: finpay-billing
 
