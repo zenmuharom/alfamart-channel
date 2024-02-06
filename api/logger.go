@@ -1,9 +1,17 @@
 package api
 
 import (
+	"alfamart-channel/domain"
+	"alfamart-channel/logger"
+	"alfamart-channel/repo"
+	"alfamart-channel/util"
 	"bytes"
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -30,9 +38,9 @@ func (server *DefaultServer) Logger() gin.HandlerFunc {
 
 		serveTime := time.Now()
 
-		logger := server.setupLogger()
+		logger := logger.SetupLogger()
 
-		body, _ := ioutil.ReadAll(ctx.Request.Body)
+		body, _ := io.ReadAll(ctx.Request.Body)
 		fields := []zenlogger.ZenField{
 			{
 				Key:   "URI",
@@ -56,8 +64,28 @@ func (server *DefaultServer) Logger() gin.HandlerFunc {
 			},
 		}
 		logger.Info("Request", fields...)
+
+		// write log
+		trxLog, err := server.insertTrx(logger)
+		if err != nil {
+			errDesc := logger.Error("Logger", zenlogger.ZenField{Key: "error", Value: err.Error()})
+			errRes := errors.New(errDesc)
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errRes)
+			return
+		}
+
+		trxLogStr, errMarshall := json.Marshal(trxLog)
+		if errMarshall != nil {
+			errDesc := logger.Error("Logger", zenlogger.ZenField{Key: "error", Value: errMarshall.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while marshal trxLog"})
+			errRes := errors.New(errDesc)
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errRes)
+			return
+		}
+
+		// add pid & trx_log
 		ctx.Request.Header.Add("pid", logger.GetPid())
-		ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		ctx.Request.Header.Add("trx_log", string(trxLogStr))
+		ctx.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
 		// go to handler
 		ctx.Next()
@@ -97,6 +125,45 @@ func (server *DefaultServer) Logger() gin.HandlerFunc {
 			},
 		}
 
+		if err := json.Unmarshal([]byte(w.Header().Get("trx_log")), trxLog); err != nil {
+			logger.Error("Logger", zenlogger.ZenField{Key: "error", Value: err.Error()})
+		}
+
+		trxLog.ElapsedTime = sql.NullInt64{Int64: elapsedTime.Milliseconds(), Valid: true}
+
+		server.updateTrx(logger, trxLog)
+
 		logger.Info("Summary", fields...)
 	}
+}
+
+func (server *DefaultServer) insertTrx(logger zenlogger.Zenlogger) (trxLog *domain.Trx, err error) {
+
+	dataToInsert := domain.Trx{
+		Pid:            logger.GetPid(),
+		AmendmentDate:  sql.NullTime{Time: time.Now(), Valid: true},
+		SourceMerchant: sql.NullString{String: "000000", Valid: true},
+		TargetProduct:  sql.NullString{String: "000000", Valid: true},
+		Status:         sql.NullString{String: "decline", Valid: true},
+		ElapsedTime:    sql.NullInt64{Int64: 0, Valid: true},
+	}
+
+	trxRepo := repo.NewTrxRepo(logger, util.GetDB())
+	trxLog, err = trxRepo.Upsert(dataToInsert)
+	if err != nil {
+		logger.Error("insertTrx", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while call _, err := trxRepo.Upsert(dataToInsert)"})
+	}
+
+	return
+}
+
+func (server *DefaultServer) updateTrx(logger zenlogger.Zenlogger, trxLog *domain.Trx) (err error) {
+
+	trxRepo := repo.NewTrxRepo(logger, util.GetDB())
+	_, err = trxRepo.Upsert(*trxLog)
+	if err != nil {
+		logger.Error("updateTrx", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while call _, err := trxRepo.Upsert(trxLog)"})
+	}
+
+	return
 }

@@ -15,22 +15,25 @@ import (
 type DefaultStaticService struct {
 	logger  zenlogger.Zenlogger
 	request models.Request
+	trxLog  *domain.Trx
 }
 
 type StaticService interface {
-	Inquiry() (response string, err error)
-	Payment() (response string, err error)
-	Commit() (response string, err error)
+	Inquiry(request models.Request) (response string, err error)
+	Payment(request models.Request) (response string, err error)
+	Commit(request models.Request) (response string, err error)
 }
 
-func NewStaticService(logger zenlogger.Zenlogger, request models.Request) StaticService {
+func NewStaticService(logger zenlogger.Zenlogger, trxLog *domain.Trx) StaticService {
 	return &DefaultStaticService{
-		logger:  logger,
-		request: request,
+		logger: logger,
+		trxLog: trxLog,
 	}
 }
 
-func (service *DefaultStaticService) Inquiry() (response string, err error) {
+func (service *DefaultStaticService) Inquiry(request models.Request) (response string, err error) {
+
+	service.request = request
 
 	userProductRepo := repo.NewUserProductRepo(service.logger)
 	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: service.request.AgentID}, ProductCode: sql.NullString{String: service.request.ProductID}})
@@ -92,7 +95,9 @@ func (service *DefaultStaticService) Inquiry() (response string, err error) {
 	return
 }
 
-func (service *DefaultStaticService) Payment() (response string, err error) {
+func (service *DefaultStaticService) Payment(request models.Request) (response string, err error) {
+
+	service.request = request
 
 	userProductRepo := repo.NewUserProductRepo(service.logger)
 	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: service.request.AgentID}, ProductCode: sql.NullString{String: service.request.ProductID}})
@@ -149,7 +154,9 @@ func (service *DefaultStaticService) Payment() (response string, err error) {
 	return
 }
 
-func (service *DefaultStaticService) Commit() (response string, err error) {
+func (service *DefaultStaticService) Commit(request models.Request) (response string, err error) {
+
+	service.request = request
 
 	userProductRepo := repo.NewUserProductRepo(service.logger)
 	userProductConf, err := userProductRepo.Find(domain.UserProduct{Username: sql.NullString{String: service.request.AgentID}, ProductCode: sql.NullString{String: service.request.ProductID}})
