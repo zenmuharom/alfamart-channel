@@ -41,6 +41,7 @@ func (this *DefaultTrxLog) Write(trx *domain.Trx) (err error) {
 		Amount:         sql.NullFloat64{Float64: trx.Amount.Float64, Valid: true},
 		Rc:             sql.NullString{String: trx.Rc.String, Valid: true},
 		RcDesc:         sql.NullString{String: trx.RcDesc.String, Valid: true},
+		Status:         sql.NullString{String: trx.Status.String, Valid: true},
 		ElapsedTime:    sql.NullInt64{Int64: trx.ElapsedTime.Int64, Valid: true},
 	}
 

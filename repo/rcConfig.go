@@ -12,7 +12,7 @@ type DefaultRcConfigRepo struct {
 }
 
 type RcConfigRepo interface {
-	FindRc(productCode string, GoCode int64) (*domain.RcConfig, error)
+	FindRc(productCode string, GoCode string) (*domain.RcConfig, error)
 }
 
 func NewRcConfigRepo(logger zenlogger.Zenlogger) RcConfigRepo {
@@ -21,7 +21,7 @@ func NewRcConfigRepo(logger zenlogger.Zenlogger) RcConfigRepo {
 	}
 }
 
-func (repo *DefaultRcConfigRepo) FindRc(productCode string, GoCode int64) (*domain.RcConfig, error) {
+func (repo *DefaultRcConfigRepo) FindRc(productCode string, GoCode string) (*domain.RcConfig, error) {
 	var rcConfig domain.RcConfig
 
 	sqlStmt := `SELECT go_code, code, product_code, httpstatus, desc_eng, desc_id, created_at, updated_at, deleted_at FROM rc_config WHERE (product_code = ? OR product_code = '000000') AND go_code = ? ORDER BY CASE WHEN product_code <> '000000' THEN 0 ELSE 1 END, id LIMIT 1`

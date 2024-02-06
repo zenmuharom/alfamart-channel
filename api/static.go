@@ -44,7 +44,7 @@ func (handler *DefaultHandler) StaticInquiry(ctx *gin.Context) {
 	staticService := service.NewStaticService(logger, &trxLog)
 	response, err := staticService.Inquiry(handler.request)
 	if err != nil {
-
+		logger.Error("StaticInquiry", zenlogger.ZenField{Key: "error", Value: err.Error()})
 	}
 
 	// encode trx_log back
@@ -91,7 +91,7 @@ func (handler *DefaultHandler) StaticPayment(ctx *gin.Context) {
 	staticService := service.NewStaticService(logger, &trxLog)
 	response, err := staticService.Payment(handler.request)
 	if err != nil {
-
+		logger.Error("StaticPayment", zenlogger.ZenField{Key: "error", Value: err.Error()})
 	}
 
 	ctx.String(http.StatusOK, response)
@@ -127,7 +127,7 @@ func (handler *DefaultHandler) StaticCommit(ctx *gin.Context) {
 	staticService := service.NewStaticService(logger, &trxLog)
 	response, err := staticService.Commit(handler.request)
 	if err != nil {
-
+		logger.Error("StaticCommit", zenlogger.ZenField{Key: "error", Value: err.Error()})
 	}
 
 	ctx.String(http.StatusOK, response)

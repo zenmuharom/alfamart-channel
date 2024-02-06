@@ -45,6 +45,23 @@ func (this *DefaultStaticService) writeLog() (errRes error) {
 	return
 }
 
+func (service *DefaultStaticService) mappingRC(productCode, goCode string) (resultCode, resultDesc string) {
+
+	rcConfigRepo := repo.NewRcConfigRepo(service.logger)
+	rcConfig, err := rcConfigRepo.FindRc(productCode, goCode)
+	if err != nil {
+		service.logger.Error("Inquiry", zenlogger.ZenField{Key: "error", Value: err.Error()})
+		resultCode = "1706"
+		resultDesc = err.Error()
+		return
+	}
+
+	resultCode = rcConfig.Code.String
+	resultDesc = rcConfig.DescEng.String
+
+	return
+}
+
 func (service *DefaultStaticService) Inquiry(request models.Request) (response string, err error) {
 
 	service.request = request
@@ -54,7 +71,9 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 
 	timeStamp, _ := time.Parse("20060102150405", service.request.DateTimeRequest)
 
+	service.trxLog.SourceMerchant = sql.NullString{String: userProductConf.Bit33.String, Valid: true}
 	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
+	service.trxLog.Amount = sql.NullFloat64{Float64: 0, Valid: true}
 
 	req := map[string]interface{}{
 		"userName":         service.request.AgentID,
@@ -82,29 +101,63 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 		service.logger.Error("Inquiry", zenlogger.ZenField{Key: "error", Value: err.Error()})
 	}
 
-	customerInformation := fmt.Sprintf(
-		"%v#%v#%v",
-		strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[20:45], " "),   // nama pt
-		strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[130:144], " "), // no polisi
-		strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[45:75], " "),   // alamat
-	)
+	// TODO mapping RC
+	resultCode, resultDesc := service.mappingRC(userProductConf.ProductCodeMapped.String, strings.Trim(fmt.Sprintf("%v", tsRes["resultCode"]), " "))
 
-	arrRes := []string{
-		service.request.AgentID,                                            // AgentID
-		service.request.AgentPIN,                                           // AgentPIN
-		service.request.AgentTrxID,                                         // AgentTrxID
-		service.request.AgentStoreID,                                       // AgentStoreID
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[0:20], " "),     // CustomerID
-		service.request.DateTimeRequest,                                    // DateTimeRequest
-		strings.Trim(fmt.Sprintf("%v", tsRes["resultCode"]), " "),          // resultCode
-		strings.Trim(fmt.Sprintf("%v", tsRes["resultDesc"]), " "),          // resultDesc
-		time.Now().Format("20060102150405"),                                // DatetimeResponse
-		strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " "), // PaymentPeriod
-		strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[85:130], " "),  // CustomerName
-		customerInformation,                                                // customerInformation
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[147:157], " "),  // tgl jatuh tempo
-		strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[157:169], " "),  // amount / min pembayaran
+	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + service.request.CustomerID + strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " ")
+	service.trxLog.TargetNumber = sql.NullString{String: targetNumber, Valid: true}
+	service.trxLog.Bit61 = sql.NullString{String: fmt.Sprintf("%v", tsRes["bit61"]), Valid: true}
+	service.trxLog.Rc = sql.NullString{String: resultCode, Valid: true}
+	service.trxLog.RcDesc = sql.NullString{String: resultDesc, Valid: true}
+
+	arrRes := []string{}
+	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
+		customerInformation := fmt.Sprintf(
+			"%v#%v#%v",
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[20:45], " "),   // nama pt
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[130:144], " "), // no polisi
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[45:75], " "),   // alamat
+		)
+
+		arrRes = []string{
+			service.request.AgentID,                                        // AgentID
+			service.request.AgentPIN,                                       // AgentPIN
+			service.request.AgentTrxID,                                     // AgentTrxID
+			service.request.AgentStoreID,                                   // AgentStoreID
+			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[0:20], " "), // CustomerID
+			service.request.DateTimeRequest,                                // DateTimeRequest
+			resultCode,                                                     // resultCode
+			resultDesc,                                                     // resultDesc
+			time.Now().Format("20060102150405"),                            // DatetimeResponse
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " "), // PaymentPeriod
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[85:130], " "),  // CustomerName
+			customerInformation, // customerInformation
+			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[147:157], " "), // tgl jatuh tempo
+			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[157:169], " "), // amount / min pembayaran
+		}
+
+		service.trxLog.Status = sql.NullString{String: "approve", Valid: true}
+
+	} else {
+		arrRes = []string{
+			service.request.AgentID,             // AgentID
+			service.request.AgentPIN,            // AgentPIN
+			service.request.AgentTrxID,          // AgentTrxID
+			service.request.AgentStoreID,        // AgentStoreID
+			service.request.CustomerID,          // CustomerID
+			service.request.DateTimeRequest,     // DateTimeRequest
+			resultCode,                          // resultCode
+			resultDesc,                          // resultDesc
+			time.Now().Format("20060102150405"), // DatetimeResponse
+			"",                                  // PaymentPeriod
+			"",                                  // CustomerName
+			"",                                  // customerInformation
+			"",                                  // tgl jatuh tempo
+			"",                                  // amount / min pembayaran
+		}
 	}
+
+	service.writeLog()
 
 	response = strings.Join(arrRes, "|")
 
