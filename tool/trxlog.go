@@ -33,8 +33,14 @@ func (this *DefaultTrxLog) Write(trx *domain.Trx) (err error) {
 	dataToInsert := domain.Trx{
 		Pid:            this.logger.GetPid(),
 		AmendmentDate:  sql.NullTime{Time: trx.AmendmentDate.Time, Valid: true},
+		SourceCode:     sql.NullString{String: trx.SourceCode.String, Valid: true},
 		SourceMerchant: sql.NullString{String: trx.SourceMerchant.String, Valid: true},
 		TargetProduct:  sql.NullString{String: trx.TargetProduct.String, Valid: true},
+		TargetNumber:   sql.NullString{String: trx.TargetNumber.String, Valid: true},
+		Bit61:          sql.NullString{String: trx.Bit61.String, Valid: true},
+		Amount:         sql.NullFloat64{Float64: trx.Amount.Float64, Valid: true},
+		Rc:             sql.NullString{String: trx.Rc.String, Valid: true},
+		RcDesc:         sql.NullString{String: trx.RcDesc.String, Valid: true},
 		ElapsedTime:    sql.NullInt64{Int64: trx.ElapsedTime.Int64, Valid: true},
 	}
 

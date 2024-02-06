@@ -4,6 +4,7 @@ import (
 	"alfamart-channel/domain"
 	"alfamart-channel/logger"
 	"alfamart-channel/service"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 
@@ -37,6 +38,8 @@ func (handler *DefaultHandler) StaticInquiry(ctx *gin.Context) {
 	if err != nil {
 		logger.Error("StaticInquiry", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while decode request body to map"})
 	}
+
+	trxLog.SourceCode = sql.NullString{String: "INQUIRY", Valid: true}
 
 	staticService := service.NewStaticService(logger, &trxLog)
 	response, err := staticService.Inquiry(handler.request)

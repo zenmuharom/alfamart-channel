@@ -54,6 +54,8 @@ func (service *DefaultStaticService) Inquiry(request models.Request) (response s
 
 	timeStamp, _ := time.Parse("20060102150405", service.request.DateTimeRequest)
 
+	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
+
 	req := map[string]interface{}{
 		"userName":         service.request.AgentID,
 		"caCode":           userProductConf.Bit32.String,

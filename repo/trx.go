@@ -60,11 +60,14 @@ func (repo *DefaultTrxRepo) Insert(data domain.Trx) (inserted *domain.Trx, errRe
 func (repo *DefaultTrxRepo) Upsert(data domain.Trx) (updated *domain.Trx, errRes error) {
 	var err error
 	sqlStmt := `
-	INSERT INTO trx (pid, amendment_date, source_merchant, target_product, amount, status, rc, rc_desc, elapsed_time)
-	VALUES (:pid, :amendment_date, :source_merchant, :target_product, :amount, :status, :rc, :rc_desc, :elapsed_time)
+	INSERT INTO trx (pid, amendment_date, source_code, source_merchant, target_product, target_number, bit61, amount, status, rc, rc_desc, elapsed_time)
+	VALUES (:pid, :amendment_date, :source_code, :source_merchant, :target_product, :target_number, :bit61, :amount, :status, :rc, :rc_desc, :elapsed_time)
 	ON DUPLICATE KEY UPDATE
+		source_code = :source_code,
 		source_merchant = :source_merchant, 
-		target_product = :target_product, 
+		target_product = :target_product,
+		target_number = :target_number,
+		bit61 = :bit61,
 		amount = :amount, 
 		status = :status, 
 		rc = :rc, 
