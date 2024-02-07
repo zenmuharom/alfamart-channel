@@ -102,7 +102,7 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 	// mapping RC
 	resultCode, resultDesc := service.mappingRC(userProductConf.ProductCodeMapped.String, strings.Trim(fmt.Sprintf("%v", tsRes["resultCode"]), " "))
 
-	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID + "#" + request.AgentTrxID
+	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID
 
 	service.trxLog.TargetNumber = sql.NullString{String: targetNumber, Valid: true}
 	service.trxLog.Bit61 = sql.NullString{String: fmt.Sprintf("%v", tsRes["bit61"]), Valid: true}
@@ -172,7 +172,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
 	service.trxLog.Amount = sql.NullFloat64{Float64: 0, Valid: true}
 
-	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID + "#" + request.AgentTrxID
+	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID
 
 	trxRepo := repo.NewTrxRepo(service.logger, util.GetDB())
 	trx, err := trxRepo.FindByTargetNumber(targetNumber)
@@ -196,6 +196,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	// mapping RC
 	resultCode, resultDesc := service.mappingRC(userProductConf.ProductCodeMapped.String, rcProcess)
 
+	targetNumber = userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID + "#" + request.AgentTrxID
 	service.trxLog.TargetNumber = sql.NullString{String: targetNumber, Valid: true}
 	service.trxLog.Bit61 = sql.NullString{String: trx.Bit61.String, Valid: true}
 	service.trxLog.Rc = sql.NullString{String: resultCode, Valid: true}
@@ -293,6 +294,8 @@ func (service *DefaultStaticService) Commit(request models.CommitReq) (response 
 			request.ProductID,
 		}
 
+		service.trxLog.TargetNumber = sql.NullString{String: targetNumber, Valid: true}
+
 		service.writeLog()
 
 		response = strings.Join(arrRes, "|")
@@ -340,18 +343,22 @@ func (service *DefaultStaticService) Commit(request models.CommitReq) (response 
 	arrRes := []string{}
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
 		arrRes = []string{
-			request.AgentID,    // AgentID
-			request.AgentPIN,   // AgentPIN
-			request.AgentTrxID, // AgentTrxID
-			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[0:20], " "), // AgentStoreID / No NPP
+			request.AgentID,         // AgentID
+			request.AgentPIN,        // AgentPIN
+			request.AgentTrxID,      // AgentTrxID
+			request.AgentStoreID,    // AgentStoreID / No NPP
+			request.CustomerID,      // CustomerID
 			request.DateTimeRequest, // DateTimeRequest
 			resultCode,
 			resultDesc,
 			time.Now().Format("20060102150405"), // DateTimeResponse
-			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[95:105], " "), // No Pengesahan
+			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[75:85], " "), // No Pengesahan
 			"",
 			request.ProductID,
 		}
+
+		service.trxLog.Status = sql.NullString{String: "approve", Valid: true}
+
 	} else {
 		arrRes = []string{
 			request.AgentID,                     // AgentID
