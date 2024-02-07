@@ -215,6 +215,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")), // Amount
 			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[169:181], "0")), // Charge / Nilai Denda
 			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[207:219], "0")), // Total / min pembayaran
+			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[231:243], "0")), // adminFee / biaya admin
 			resultCode,                          // resultCode
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DateTimeResponse
