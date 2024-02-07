@@ -37,7 +37,7 @@ build:
 .deploy_template: &deploy
   script:
     - sed -i "s|APP_VERSION|$VERSION|g" src/helm/Chart.yaml
-    - sed -i "s|VAR_LOADBALANCER_IP|$VAR_LOADBALANCER_IP|g" src/helm/alfamart-channel.yaml
+    - sed -i "s|VAR_LOADBALANCER_IP|$LOADBALANCER_IP|g" src/helm/alfamart-channel.yaml
     - sed -i "s|VAR_SERVICE_NAME|$SERVICE_NAME|g" src/helm/alfamart-channel.yaml
     - sed -i "s|VAR_SERVER_ADDRESS|$SERVER_ADDRESS|g" src/helm/alfamart-channel.yaml
     - sed -i "s|VAR_SERVER_PORT|$SERVER_PORT|g" src/helm/alfamart-channel.yaml
