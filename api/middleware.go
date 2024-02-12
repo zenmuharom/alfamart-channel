@@ -126,14 +126,26 @@ func validateRequest(logger zenlogger.Zenlogger, endpoint string, req map[string
 				validationMsg += ", "
 			}
 			validationMsg += fmt.Sprintf("%s is missing", field.Field.String)
-		} else if field.Forbidded.Bool && ok {
-			if valid {
-				errRes.GoCode = 35
-				valid = false
-			} else {
-				validationMsg += ", "
+		}
+
+		if ok {
+			// check the minimum length validation of value
+			if field.LengthMin.Valid {
+				ok = (len(value) >= int(field.LengthMin.Int64))
+				if !ok {
+					valid = false
+					validationMsg += fmt.Sprintf("%s minimum length is %v", field.Field.String, field.LengthMin.Int64)
+				}
 			}
-			validationMsg += fmt.Sprintf("%s is forbided", field.Field.String)
+
+			// check the maximum length validation of value
+			if field.LengthMax.Valid {
+				ok = (len(value) <= int(field.LengthMax.Int64))
+				if !ok {
+					valid = false
+					validationMsg += fmt.Sprintf("%s maximum length is %v", field.Field.String, field.LengthMax.Int64)
+				}
+			}
 		}
 
 		logger.Debug("validateRequest", zenlogger.ZenField{Key: "field", Value: field.Field.String}, zenlogger.ZenField{Key: "value", Value: value}, zenlogger.ZenField{Key: "required", Value: field.Required.Bool}, zenlogger.ZenField{Key: "forbidded", Value: field.Forbidded.Bool}, zenlogger.ZenField{Key: "validationMsg", Value: validationMsg})

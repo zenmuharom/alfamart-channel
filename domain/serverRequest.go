@@ -8,7 +8,8 @@ type ServerRequest struct {
 	Order        sql.NullInt64  `db:"order"`
 	Field        sql.NullString `db:"field"`
 	Type         sql.NullString `db:"type"`
-	Length       sql.NullInt64  `db:"length"`
+	LengthMin    sql.NullInt64  `db:"length_min"`
+	LengthMax    sql.NullInt64  `db:"length_max"`
 	Required     sql.NullBool   `db:"required"`
 	Forbidded    sql.NullBool   `db:"forbidded"`
 	ParentId     sql.NullInt64  `db:"parent_id"`
