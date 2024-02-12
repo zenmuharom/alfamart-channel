@@ -8,6 +8,7 @@ import (
 	"alfamart-channel/tool"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zenmuharom/zenlogger"
@@ -83,15 +84,6 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 			return
 		}
 
-		// newBody, err := json.Marshal(req)
-		// if err != nil {
-		// 	logger.Error("Fail to re-wrap request", zenlogger.ZenField{Key: "error", Value: err})
-		// 	sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 7000, Err: err})
-		// 	return
-		// }
-		// ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(newBody))
-
-		// ctx.Next()
 	}
 }
 
@@ -149,6 +141,20 @@ func validateRequest(logger zenlogger.Zenlogger, endpoint string, req map[string
 		}
 
 		logger.Debug("validateRequest", zenlogger.ZenField{Key: "field", Value: field.Field.String}, zenlogger.ZenField{Key: "value", Value: value}, zenlogger.ZenField{Key: "required", Value: field.Required.Bool}, zenlogger.ZenField{Key: "forbidded", Value: field.Forbidded.Bool}, zenlogger.ZenField{Key: "validationMsg", Value: validationMsg})
+	}
+
+	// find timeStamp
+	key, timeStampIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "timeStamp", req)
+	if timeStampIValue == nil {
+		valid = false
+		validationMsg += "TimeStamp not set yet by Finnet."
+		return
+	} else {
+		_, err := time.Parse("20060102150405", fmt.Sprintf("%v", timeStampIValue))
+		if err != nil {
+			valid = false
+			validationMsg += fmt.Sprintf("%v invalid format", key.Field)
+		}
 	}
 
 	errRes.Err = errors.New(validationMsg)
