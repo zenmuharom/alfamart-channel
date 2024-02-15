@@ -67,6 +67,8 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 		}
 
 		if !valid {
+			logger.Info("Unknown IP address")
+			err := errors.New("Unknown IP address")
 			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 1994, Err: err})
 			return
 		}
@@ -80,6 +82,82 @@ func (server *DefaultServer) validate() gin.HandlerFunc {
 		}
 		if !valid {
 			logger.Info("Invalid signature")
+			err := errors.New("Invalid signature")
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 36, Err: err})
+			return
+		}
+
+	}
+}
+
+func (server *DefaultServer) validatePayment() gin.HandlerFunc {
+
+	return func(ctx *gin.Context) {
+
+		endpoint := ctx.Request.URL.Path
+
+		logger := server.setupLogger()
+		// read parameter URI
+		// Get the map of query parameters from the URL
+		req := make(map[string]interface{})
+		queryParams := ctx.Request.URL.Query()
+		// Iterate through the map and print the key-value pairs
+		for key, values := range queryParams {
+			// If there is only one value, add it directly to the map
+			if len(values) == 1 {
+				req[key] = values[0]
+			} else {
+				// If there are multiple values, add them as a slice of strings
+				req[key] = values
+			}
+		}
+		logger.Debug("validatePayment", zenlogger.ZenField{Key: "queryParams", Value: queryParams}, zenlogger.ZenField{Key: "req", Value: req})
+
+		// find productCode
+		_, productCodeIValue := tool.FindFieldAs(logger, domain.SERVER_REQUEST, endpoint, "productCode", req)
+		if productCodeIValue == nil {
+			err := errors.New("Product code route not set yet")
+			logger.Error(err.Error())
+			errorMsg := models.ErrorMsg{GoCode: 1706, Err: err}
+			logger.Debug("sendErrorResponse", zenlogger.ZenField{Key: "requestURI", Value: ctx.Request.URL.Path})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, "", errorMsg)
+			return
+		}
+		productCode := fmt.Sprintf("%v", productCodeIValue)
+		logger.Debug("validatePayment", zenlogger.ZenField{Key: "productCode", Value: productCode})
+
+		// validate request body using configuration DB
+		if valid, errRes := validateRequest(logger, ctx.Request.URL.Path, req); !valid {
+			logger.Error("validatePayment", zenlogger.ZenField{Key: "valid", Value: valid})
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, ctx.Request.URL.Path, errRes)
+			return
+		}
+
+		ipConfigRepo := repo.NewIpConfigRepo(logger)
+
+		valid, err := ipConfigRepo.FindIp(ctx.ClientIP())
+		if err != nil {
+			logger.Error(err.Error())
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 1706, Err: err})
+			return
+		}
+
+		if !valid {
+			err := errors.New("Unknown IP address")
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 1994, Err: err})
+			return
+		}
+
+		signatureService := service.NewSignatureService(logger)
+		valid, err = signatureService.CheckPayment(ctx.Request.URL.Path, req)
+		if err != nil {
+			logger.Error(err.Error())
+			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 1706, Err: err})
+			return
+		}
+		if !valid {
+			logger.Info("Invalid signature")
+			err := errors.New("Invalid signature")
 			sendErrorResponse(ctx, logger, ctx.Request.URL.Path, productCode, models.ErrorMsg{GoCode: 36, Err: err})
 			return
 		}

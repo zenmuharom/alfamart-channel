@@ -83,11 +83,16 @@ func (server *DefaultServer) setupRouter() {
 	})
 
 	trx := router.Group("")
-	trx.Use(server.validate())
 	trx.Use(server.Logger())
-	trx.GET("/adira/inquiry", handler.StaticInquiry)
-	trx.GET("/adira/payment", handler.StaticPayment)
-	trx.GET("/adira/commit", handler.StaticCommit)
+
+	inquiry := trx.Group("")
+	inquiry.Use(server.validate()).GET("/adira/inquiry", handler.StaticInquiry)
+
+	payment := trx.Group("")
+	payment.Use(server.validatePayment()).GET("/adira/payment", handler.StaticPayment)
+
+	commit := trx.Group("")
+	commit.Use(server.validate()).GET("/adira/commit", handler.StaticCommit)
 
 	// handlers := map[string]gin.HandlerFunc{
 	// 	"general": handler.General,
@@ -150,6 +155,8 @@ func sendErrorResponse(ctx *gin.Context, logger zenlogger.Zenlogger, endpoint, p
 	}
 
 	response := strings.Join(arrRes, "|")
+
+	ctx.Header("trx_log", ctx.Request.Header.Get("trx_log"))
 
 	ctx.String(http.StatusOK, response)
 	ctx.Abort()
