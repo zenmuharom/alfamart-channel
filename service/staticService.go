@@ -131,8 +131,13 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " "), // PaymentPeriod
 			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[85:130], " "),  // CustomerName
 			customerInformation, // customerInformation
-			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[147:157], " "), // tgl jatuh tempo
-			strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[157:169], " "), // amount / min pembayaran
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " "),                   // PaymentPeriod
+			strings.TrimSpace(strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[157:169], "0")), // Amount
+			strings.TrimSpace(strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[169:181], "0")), // Charge / Nilai Denda
+			strings.TrimSpace(strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[207:219], "0")), // Total / min pembayaran
+			strings.TrimSpace(strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[231:243], "0")), // AdminFee / biaya admin
+			request.ProductID,
+			"1",
 		}
 
 		service.trxLog.Status = sql.NullString{String: "approve", Valid: true}
@@ -149,10 +154,16 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DatetimeResponse
 			"",                                  // PaymentPeriod
+			"",                                  // Amount
+			"",                                  // Charge / Nilai Denda
+			"",                                  // Total / min pembayaran
+			"",                                  // AdminFee / biaya admin
 			"",                                  // CustomerName
 			"",                                  // customerInformation
 			"",                                  // tgl jatuh tempo
 			"",                                  // amount / min pembayaran
+			request.ProductID,
+			"1",
 		}
 	}
 
@@ -215,7 +226,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")), // Amount
 			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[169:181], "0")), // Charge / Nilai Denda
 			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[207:219], "0")), // Total / min pembayaran
-			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[231:243], "0")), // adminFee / biaya admin
+			strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[231:243], "0")), // AdminFee / biaya admin
 			resultCode,                          // resultCode
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DateTimeResponse

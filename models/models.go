@@ -49,7 +49,7 @@ type PaymentReq struct {
 	Amount          string `json:"Amount"`
 	Charge          string `json:"Charge"`
 	Total           string `json:"Total"`
-	AdminFee        string `json:"adminFee"`
+	AdminFee        string `json:"AdminFee"`
 	Signature       string `json:"Signature"`
 }
 

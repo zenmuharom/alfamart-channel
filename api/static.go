@@ -192,7 +192,7 @@ func (handler *DefaultHandler) parsePayRequest(req *models.PaymentReq, queryPara
 	req.Amount = queryParams.Get("Amount")
 	req.Charge = queryParams.Get("Charge")
 	req.Total = queryParams.Get("Total")
-	req.AdminFee = queryParams.Get("adminFee")
+	req.AdminFee = queryParams.Get("AdminFee")
 	req.Signature = queryParams.Get("Signature")
 
 	return
