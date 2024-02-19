@@ -118,6 +118,11 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[45:75], " "),   // alamat
 		)
 
+		tglJatuhTempoTime, err := time.Parse("02 Jan 06", strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[147:157], " "))
+		if err != nil {
+			service.logger.Error("Inquiry", zenlogger.ZenField{Key: "error", Value: err.Error()})
+		}
+
 		arrRes = []string{
 			request.AgentID,      // AgentID
 			request.AgentPIN,     // AgentPIN
@@ -130,8 +135,8 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 			time.Now().Format("20060102150405"), // DatetimeResponse
 			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " "), // PaymentPeriod
 			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[85:130], " "),  // CustomerName
-			customerInformation, // customerInformation
-			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[147:157], " "),                   // Tgl Jatuh Tempo
+			customerInformation,                  // customerInformation
+			tglJatuhTempoTime.Format("20060102"), // Tgl Jatuh Tempo
 			strings.TrimSpace(strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[157:169], "0")), // Amount
 			strings.TrimSpace(strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[169:181], "0")), // Charge / Nilai Denda
 			strings.TrimSpace(strings.TrimLeft(fmt.Sprintf("%v", tsRes["bit61"])[207:219], "0")), // Total / min pembayaran
@@ -139,8 +144,6 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 			request.ProductID,
 			"1",
 		}
-
-		targetNumber = userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID + "#" + strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[144:147], " ")
 
 		service.trxLog.Status = sql.NullString{String: "approve", Valid: true}
 
@@ -185,7 +188,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	service.trxLog.TargetProduct = sql.NullString{String: userProductConf.ProductCode.String, Valid: true}
 	service.trxLog.Amount = sql.NullFloat64{Float64: 0, Valid: true}
 
-	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID + "#" + request.PaymentPeriod
+	targetNumber := userProductConf.Bit33.String + userProductConf.ProductCodeMapped.String + request.CustomerID + "|" + request.AgentID + "#" + request.AgentPIN + "#" + request.AgentStoreID
 
 	trxRepo := repo.NewTrxRepo(service.logger, util.GetDB())
 	trx, err := trxRepo.FindByTargetNumber(targetNumber)
@@ -199,9 +202,15 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	}
 
 	if err == nil {
-		if request.Total == strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")) {
-			rcProcess = "00"
-		} else {
+
+		rcProcess = "00"
+
+		// check if paymentPeriod & total are equal with DB
+		if request.PaymentPeriod != strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String[144:147]), " ") {
+			rcProcess = "1700"
+		}
+
+		if request.Total != strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")) {
 			rcProcess = "7050"
 		}
 	}
