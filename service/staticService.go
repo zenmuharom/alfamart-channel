@@ -210,7 +210,8 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			rcProcess = "1700"
 		}
 
-		if request.Total != strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")) {
+		if request.Total != strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[207:219], "0")) {
+			service.logger.Debug("Payment", zenlogger.ZenField{Key: "requestTotal", Value: request.Total}, zenlogger.ZenField{Key: "bit61 total", Value: strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[207:219], "0"))})
 			rcProcess = "7050"
 		}
 	}
