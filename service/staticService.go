@@ -339,7 +339,7 @@ func (service *DefaultStaticService) Commit(request models.CommitReq) (response 
 		"terminalLocation": "Bidakara Pancoran",
 		"transactionType":  "50",
 		"billNumber":       request.CustomerID,
-		"amount":           strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[157:169], "0")),
+		"amount":           strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[207:219], "0")),
 		"feeAmount":        "0",
 		"bit61":            trx.Bit61.String,
 		"traxId":           request.AgentTrxID,
