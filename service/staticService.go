@@ -242,7 +242,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			resultCode,                          // resultCode
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DateTimeResponse
-			strings.TrimLeft(trx.Bit61.String[75:85], " "), // Pengesahan
+			time.Now().Format("20060102150405"), // Ref Code Provider
 			"MULAI 1OKT23, DENDA YG DIBAYARKAN UTK ANGS MOTOR 35RB & MOBIL 150RB. CEK PEMBAYARANMU DI APP ADIRAKU (ADIRA.ID/ADIRAKU-8) INFO 1500511", // AdditionalData
 			request.ProductID, // ProductID
 		}
@@ -264,7 +264,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			resultCode,                          // resultCode
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DateTimeResponse
-			"",                                  // Pengesahan
+			"",                                  // Reff Code Provider
 			"",                                  // AdditionalData
 			request.ProductID,                   // ProductID
 		}
