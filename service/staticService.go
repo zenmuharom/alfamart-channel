@@ -352,9 +352,10 @@ func (service *DefaultStaticService) Commit(request models.CommitReq) (response 
 	tsRes, err := tsRepo.Request2(userProductConf.SwitchingUrl.String, int(userProductConf.TimeoutBiller.Int32), req)
 	if err != nil {
 		service.logger.Error("Inquiry", zenlogger.ZenField{Key: "error", Value: err.Error()})
+	} else {
+		// change RC to whatever tsRes given
+		rcProcess = strings.TrimSpace(fmt.Sprintf("%v", tsRes["resultCode"]))
 	}
-
-	rcProcess = strings.TrimSpace(fmt.Sprintf("%v", tsRes["resultCode"]))
 
 	// mapping RC
 	resultCode, resultDesc := service.mappingRC(userProductConf.ProductCodeMapped.String, rcProcess)
