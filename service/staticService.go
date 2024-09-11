@@ -226,15 +226,14 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	service.trxLog.Rc = sql.NullString{String: resultCode, Valid: true}
 	service.trxLog.RcDesc = sql.NullString{String: resultDesc, Valid: true}
 
-	strukInformation := fmt.Sprintf(
-		"%v%v%v",
-		"Sisa denda anda adalah ", // nama pt
-		strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:144], " "),
-		" Silahkan melakukan pengecekan pada dering Adira 1500511", // alamat
-	)
-
 	arrRes := []string{}
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
+		strukInformation := fmt.Sprintf(
+			"%v%v%v",
+			"Sisa denda anda adalah ", // nama pt
+			strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:144], " "),
+			" Silahkan melakukan pengecekan pada dering Adira 1500511", // alamat
+		)
 		arrRes = []string{
 			request.AgentID,      // AgentID
 			request.AgentPIN,     // AgentPIN
