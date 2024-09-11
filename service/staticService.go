@@ -113,9 +113,10 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
 		customerInformation := fmt.Sprintf(
 			"%v#%v#%v",
-			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[20:45], " "),   // nama pt
-			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[130:144], " "), // no polisi
-			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[45:75], " "),   // alamat
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[20:45], " "), // nama pt
+			// strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[130:144], " "), // no polisi
+			" ",
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[45:75], " "), // alamat
 		)
 
 		tglJatuhTempoTime, err := time.Parse("02 Jan 06", strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[147:157], " "))
@@ -225,6 +226,13 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	service.trxLog.Rc = sql.NullString{String: resultCode, Valid: true}
 	service.trxLog.RcDesc = sql.NullString{String: resultDesc, Valid: true}
 
+	strukInformation := fmt.Sprintf(
+		"%v%v%v",
+		"Sisa denda anda adalah ", // nama pt
+		strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:144], " "),
+		" Silahkan melakukan pengecekan pada dering Adira 1500511", // alamat
+	)
+
 	arrRes := []string{}
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
 		arrRes = []string{
@@ -243,7 +251,8 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DateTimeResponse
 			time.Now().Format("20060102150405"), // Ref Code Provider
-			"Mulai 1 Jun 2024, denda yang dibayarkan utk Ang Motor/Durable 50rb & Mobil/Property 200rb. Cek pembayaranmu di adira.id/adiraku-8 info 150011", // AdditionalData
+			// "Mulai 1 Jun 2024, denda yang dibayarkan utk Ang Motor/Durable 50rb & Mobil/Property 200rb. Cek pembayaranmu di adira.id/adiraku-8 info 150011", // AdditionalData
+			strukInformation,
 			request.ProductID, // ProductID
 		}
 
