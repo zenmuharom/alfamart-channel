@@ -243,7 +243,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DateTimeResponse
 			time.Now().Format("20060102150405"), // Ref Code Provider
-			"Mulai 1 Jun 2024, denda yang dibayarkan utk Ang Motor/Durable 50rb & Mobil/Property 200rb. Cek pembayaranmu di adira.id/adiraku-8 info 150011", // AdditionalData
+			"Sisa denda adalah Rp.2000.000 Silahkan melaukan pengecekan pada dering Adira 1500511", // AdditionalData
 			request.ProductID, // ProductID
 		}
 
