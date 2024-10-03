@@ -113,9 +113,10 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
 		customerInformation := fmt.Sprintf(
 			"%v#%v#%v",
-			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[20:45], " "),   // nama pt
-			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[130:144], " "), // no polisi
-			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[45:75], " "),   // alamat
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[20:45], " "), // nama pt
+			// strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[130:144], " "), // no polisi
+			" ",
+			strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[45:75], " "), // alamat
 		)
 
 		tglJatuhTempoTime, err := time.Parse("02 Jan 06", strings.TrimRight(fmt.Sprintf("%v", tsRes["bit61"])[147:157], " "))
@@ -179,6 +180,32 @@ func (service *DefaultStaticService) Inquiry(request models.InquiryReq) (respons
 	return
 }
 
+func formatStringWithThousandSeparator(strNum string) string {
+	// Reverse the string to process from right to left
+	reversedNum := reverseString(strNum)
+
+	// Add dot every three characters
+	var parts []string
+	for i := 0; i < len(reversedNum); i += 3 {
+		end := i + 3
+		if end > len(reversedNum) {
+			end = len(reversedNum)
+		}
+		parts = append(parts, reversedNum[i:end])
+	}
+
+	// Join parts with dot separator and reverse back to original order
+	return reverseString(strings.Join(parts, "."))
+}
+
+func reverseString(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
 func (service *DefaultStaticService) Payment(request models.PaymentReq) (response string, err error) {
 	rcProcess := "05"
 	userProductRepo := repo.NewUserProductRepo(service.logger)
@@ -227,6 +254,12 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 
 	arrRes := []string{}
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
+		strukInformation := fmt.Sprintf(
+			"%v Rp%v %v",
+			"Sisa denda anda adalah", // nama pt
+			formatStringWithThousandSeparator(strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:144], " ")),
+			"Silahkan melakukan pengecekan pada dering Adira 1500511", // alamat
+		)
 		arrRes = []string{
 			request.AgentID,      // AgentID
 			request.AgentPIN,     // AgentPIN
@@ -243,7 +276,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 			resultDesc,                          // resultDesc
 			time.Now().Format("20060102150405"), // DateTimeResponse
 			time.Now().Format("20060102150405"), // Ref Code Provider
-			"Sisa denda adalah Rp.2000.000 Silahkan melaukan pengecekan pada dering Adira 1500511", // AdditionalData
+			strukInformation,
 			request.ProductID, // ProductID
 		}
 
