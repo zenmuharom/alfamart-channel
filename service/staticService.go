@@ -255,7 +255,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 	arrRes := []string{}
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
 		strukInformation := fmt.Sprintf(
-			"%v Rp%v %v",
+			"%v Rp %v %v",
 			"Sisa denda anda adalah", // nama pt
 			formatStringWithThousandSeparator(strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:143], " ")),
 			"Silahkan melakukan pengecekan pada dering Adira 1500511", // alamat
