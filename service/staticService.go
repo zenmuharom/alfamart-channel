@@ -257,7 +257,7 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 		strukInformation := fmt.Sprintf(
 			"%v Rp%v %v",
 			"Sisa denda anda adalah", // nama pt
-			formatStringWithThousandSeparator(strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[110:124], " ")),
+			formatStringWithThousandSeparator(strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:143], " ")),
 			"Silahkan melakukan pengecekan pada dering Adira 1500511", // alamat
 		)
 		arrRes = []string{
