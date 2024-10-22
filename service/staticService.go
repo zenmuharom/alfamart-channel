@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -254,10 +255,15 @@ func (service *DefaultStaticService) Payment(request models.PaymentReq) (respons
 
 	arrRes := []string{}
 	if tool.CheckRCStatus(service.logger, resultCode, userProductConf.RCSuccess) {
+
+		penaltyRemaining, _ := strconv.ParseInt(strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:143], " "), 10, 64)
+		penalty, _ := strconv.ParseInt(strings.TrimSpace(strings.TrimLeft(trx.Bit61.String[169:181], "0")), 10, 64)
+		osPenalty := penaltyRemaining - penalty
+
 		strukInformation := fmt.Sprintf(
 			"%v Rp %v %v",
 			"Sisa denda anda adalah", // nama pt
-			formatStringWithThousandSeparator(strings.TrimRight(fmt.Sprintf("%v", trx.Bit61.String)[130:143], " ")),
+			formatStringWithThousandSeparator(fmt.Sprintf("%v", osPenalty)),
 			"Silahkan melakukan pengecekan pada dering Adira 1500511", // alamat
 		)
 		arrRes = []string{
