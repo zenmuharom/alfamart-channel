@@ -12,7 +12,6 @@ import (
 )
 
 type DefaultHandler struct {
-	request models.Request
 }
 
 type Handler interface {
@@ -29,6 +28,7 @@ func NewHandler() Handler {
 func (handler *DefaultHandler) General(ctx *gin.Context) {
 	endpoint := ctx.Request.URL.Path
 	logger := logger.SetupLogger()
+	var request models.Request
 	logger.WithPid(ctx.Request.Header.Get("pid"))
 
 	queryParams := ctx.Request.URL.Query()
@@ -41,12 +41,12 @@ func (handler *DefaultHandler) General(ctx *gin.Context) {
 
 	logger.Info("General", zenlogger.ZenField{Key: "endpoint", Value: endpoint}, zenlogger.ZenField{Key: "query", Value: reqMap})
 
-	err = handler.parseRequest(&handler.request, queryParams)
+	err = handler.parseRequest(&request, queryParams)
 	if err != nil {
 		logger.Error("General", zenlogger.ZenField{Key: "error", Value: err.Error()}, zenlogger.ZenField{Key: "addition", Value: "error while decode request body to map"})
 	}
 
-	routeService := service.NewRoute(logger, endpoint, handler.request, reqMap)
+	routeService := service.NewRoute(logger, endpoint, request, reqMap)
 	response, err := routeService.Process()
 	logger.Debug("General", zenlogger.ZenField{Key: "response", Value: response})
 	if err != nil {
